@@ -10,19 +10,19 @@
     },
     {
       "name": "base",
-      "version": "2.0.13"
+      "version": "2.0.14"
     },
     {
       "name": "elevated-rails",
-      "version": "2.0.13"
+      "version": "2.0.14"
     },
     {
       "name": "quality",
-      "version": "2.0.13"
+      "version": "2.0.14"
     },
     {
       "name": "space-age",
-      "version": "2.0.13"
+      "version": "2.0.14"
     }
   ],
   "technologies": [
@@ -16259,7 +16259,8 @@
           "name": "steam",
           "type": "fluid",
           "amount": 10000,
-          "p_amount": 10000
+          "p_amount": 10000,
+          "temperature": 500
         }
       ],
       "localised_name": "Acid neutralisation"
@@ -20225,7 +20226,8 @@
           "name": "fluoroketone-hot",
           "type": "fluid",
           "amount": 50,
-          "p_amount": 50
+          "p_amount": 50,
+          "temperature": 180
         }
       ],
       "localised_name": "Fluoroketone"
@@ -20260,7 +20262,8 @@
           "name": "fluoroketone-cold",
           "type": "fluid",
           "amount": 10,
-          "p_amount": 10
+          "p_amount": 10,
+          "temperature": -150
         }
       ],
       "localised_name": "Cooling hot fluoroketone"
@@ -20407,7 +20410,8 @@
           "name": "fluoroketone-hot",
           "type": "fluid",
           "amount": 5,
-          "p_amount": 0
+          "p_amount": 0,
+          "temperature": 180
         }
       ],
       "localised_name": "Quantum processor"
@@ -47237,7 +47241,7 @@
           "name": "water",
           "type": "fluid",
           "amount": 60,
-          "temperate": 15
+          "temperature": 15
         }
       ],
       "localised_name": "Water"
@@ -47251,7 +47255,7 @@
           "name": "lava",
           "type": "fluid",
           "amount": 60,
-          "temperate": 1500
+          "temperature": 1500
         }
       ],
       "localised_name": "Lava"
@@ -47265,7 +47269,7 @@
           "name": "heavy-oil",
           "type": "fluid",
           "amount": 60,
-          "temperate": 25
+          "temperature": 25
         }
       ],
       "localised_name": "Heavy oil"
@@ -47279,7 +47283,7 @@
           "name": "ammoniacal-solution",
           "type": "fluid",
           "amount": 60,
-          "temperate": -50
+          "temperature": -50
         }
       ],
       "localised_name": "Ammoniacal solution"
