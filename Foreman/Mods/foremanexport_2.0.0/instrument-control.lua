@@ -73,7 +73,7 @@ local function ProcessProductList(products)
 		tproduct['amount'] = amount + amount_added_by_extra_fraction
 		tproduct['p_amount'] = amount - amount_ignored_by_productivity + amount_added_by_extra_fraction
 
-		if product.type == 'fluid' and product.temperate ~= nil then
+		if product.type == 'fluid' and product.temperature ~= nil then
 			tproduct['temperature'] = ProcessTemperature(product.temperature)
 		end
 		table.insert(productlist, tproduct)
@@ -609,7 +609,7 @@ local function ExportWaterResources()
 				tproduct['name'] = wresource.fluid.name
 				tproduct['type'] = 'fluid'
 				tproduct['amount'] = 60
-				tproduct['temperate'] = ProcessTemperature(wresource.fluid.default_temperature)
+				tproduct['temperature'] = ProcessTemperature(wresource.fluid.default_temperature)
 				table.insert(twresource['products'], tproduct)
 
 				twresource['lid'] = '$'..localindex
