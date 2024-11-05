@@ -537,10 +537,15 @@ namespace Foreman {
 				else
 					result = -(a.SubItems[column].Tag as double? ?? 0.0).CompareTo(b.SubItems[column].Tag as double? ?? 0.0);
 
-				if (result == 0)
-					result = (a.Tag as IDataObjectBase ?? throw new InvalidOperationException("a.Tag is not IDataObjectBase")).LFriendlyName.CompareTo((b.Tag as IDataObjectBase ?? throw new InvalidOperationException("a.Tag is not IDataObjectBase")).LFriendlyName);
-				if (result == 0)
-					result = (a.Tag as IDataObjectBase ?? throw new InvalidOperationException("a.Tag is not IDataObjectBase")).Name.CompareTo((b.Tag as IDataObjectBase ?? throw new InvalidOperationException("a.Tag is not IDataObjectBase")).Name);
+				if (result == 0 && a.Tag is IDataObjectBase ado && b.Tag is IDataObjectBase bdo) {
+					result = ado.LFriendlyName.CompareTo(bdo.LFriendlyName);
+					if (result == 0)
+						result = ado.Name.CompareTo(bdo.Name);
+				}
+
+				if (result == 0 && a.Tag is ItemQualityPair aqp && b.Tag is ItemQualityPair bqp)
+					result = aqp.Quality.Level.CompareTo(bqp.Quality.Level);
+
 				return result * reverseSortLamda;
 			});
 
