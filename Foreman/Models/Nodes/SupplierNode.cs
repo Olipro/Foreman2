@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.Serialization;
+using Newtonsoft.Json;
 
 namespace Foreman
 {
+	[Serializable]
+	[JsonObject(MemberSerialization.OptIn)]
 	public class SupplierNode : BaseNode
 	{
         public enum Errors
@@ -30,8 +31,19 @@ namespace Foreman
 
 		public readonly ItemQualityPair SuppliedItem;
 
-		public override IEnumerable<ItemQualityPair> Inputs { get { return new ItemQualityPair[0]; } }
+		public override IEnumerable<ItemQualityPair> Inputs { get { return Array.Empty<ItemQualityPair>(); } }
 		public override IEnumerable<ItemQualityPair> Outputs { get { yield return SuppliedItem; } }
+
+		[JsonProperty]
+		public NodeType NodeType => NodeType.Supplier;
+		[JsonProperty]
+		public string Item => SuppliedItem.Item.Name;
+		[JsonProperty]
+		public string BaseQuality => SuppliedItem.Quality.Name;
+		[JsonProperty("DesiredRate")]
+		public double jsonDesiredRate => DesiredRatePerSec;
+
+		public bool ShouldSerializejsonDesiredRate() => RateType == RateType.Manual;
 
 		public SupplierNode(ProductionGraph graph, int nodeID, ItemQualityPair item) : base(graph, nodeID)
 		{
@@ -74,17 +86,6 @@ namespace Foreman
 
 		internal override double inputRateFor(ItemQualityPair item) { throw new ArgumentException("Supplier should not have outputs!"); }
 		internal override double outputRateFor(ItemQualityPair item) { return 1; }
-
-		public override void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-            base.GetObjectData(info, context);
-
-            info.AddValue("NodeType", NodeType.Supplier);
-            info.AddValue("Item", SuppliedItem.Item.Name);
-            info.AddValue("BaseQuality", SuppliedItem.Quality.Name);
-            if (RateType == RateType.Manual)
-                info.AddValue("DesiredRate", DesiredRatePerSec);
-        }
 
         public override string ToString() { return string.Format("Supply node for: {0} ({1})", SuppliedItem.Item.Name, SuppliedItem.Quality.Name); }
     }

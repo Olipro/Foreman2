@@ -1,28 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Runtime.Serialization;
+using Newtonsoft.Json;
 
 namespace Foreman
 {
-	public class SpoilNode : BaseNode
-	{
-        public enum Errors
-        {
-            Clean = 0b_0000_0000_0000,
-            ItemDoesntSpoil = 0b_0000_0000_0001,
-            InvalidSpoilResult = 0b_0000_0000_0010,
+	[Serializable]
+	[JsonObject(MemberSerialization.OptIn)]
+	public class SpoilNode : BaseNode {
+		public enum Errors {
+			Clean = 0b_0000_0000_0000,
+			ItemDoesntSpoil = 0b_0000_0000_0001,
+			InvalidSpoilResult = 0b_0000_0000_0010,
 			InputItemMissing = 0b_0000_0000_0100,
 			OutputItemMissing = 0b_0000_0000_1000,
 
 			QualityMissing = 0b_0000_0001_0000,
 
-            InvalidLinks = 0b_1000_0000_0000
-        }
-        public Errors ErrorSet { get; private set; }
+			InvalidLinks = 0b_1000_0000_0000
+		}
+		public Errors ErrorSet { get; private set; }
 
-        private readonly BaseNodeController controller;
+		private readonly BaseNodeController controller;
 		public override BaseNodeController Controller { get { return controller; } }
 
 		public readonly ItemQualityPair InputItem;
@@ -31,13 +30,22 @@ namespace Foreman
 		public override IEnumerable<ItemQualityPair> Inputs { get { yield return InputItem; } }
 		public override IEnumerable<ItemQualityPair> Outputs { get { yield return OutputItem; } }
 
-        //for spoil nodes, the SetValue is 'number of stacks (item slots)'
-        public override double ActualSetValue { get { return ActualRatePerSec * InputItem.Item.GetItemSpoilageTime(InputItem.Quality) / InputItem.Item.StackSize; } }
-        public override double DesiredSetValue { get; set; }
-        public override double MaxDesiredSetValue { get { return ProductionGraph.MaxInventorySlots; } }
-        public override string SetValueDescription { get { return "Number of inventory slots"; } }
+		//for spoil nodes, the SetValue is 'number of stacks (item slots)'
+		public override double ActualSetValue { get { return ActualRatePerSec * InputItem.Item.GetItemSpoilageTime(InputItem.Quality) / InputItem.Item.StackSize; } }
+		public override double DesiredSetValue { get; set; }
+		public override double MaxDesiredSetValue { get { return ProductionGraph.MaxInventorySlots; } }
+		public override string SetValueDescription { get { return "Number of inventory slots"; } }
 
-        public override double DesiredRatePerSec { get { return DesiredSetValue * InputItem.Item.StackSize / InputItem.Item.GetItemSpoilageTime(InputItem.Quality); } }
+		public override double DesiredRatePerSec { get { return DesiredSetValue * InputItem.Item.StackSize / InputItem.Item.GetItemSpoilageTime(InputItem.Quality); } }
+
+		[JsonProperty]
+		public NodeType NodeType => NodeType.Spoil;
+		[JsonProperty("InputItem")]
+		public string jsonInputItem => InputItem.Item.Name;
+		[JsonProperty("OutputItem")]
+		public string jsonOutputItem => OutputItem.Item.Name;
+		[JsonProperty]
+		public string BaseQuality => InputItem.Quality.Name;
 
         public SpoilNode(ProductionGraph graph, int nodeID, ItemQualityPair item) : this(graph, nodeID, item, item.Item.SpoilResult) { }
 		public SpoilNode(ProductionGraph graph, int nodeID, ItemQualityPair item, Item outputItem) : base(graph, nodeID)
@@ -77,16 +85,6 @@ namespace Foreman
 
 		internal override double inputRateFor(ItemQualityPair item) { return 1; }
 		internal override double outputRateFor(ItemQualityPair item) { return 1; }
-
-		public override void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			base.GetObjectData(info, context);
-
-			info.AddValue("NodeType", NodeType.Spoil);
-			info.AddValue("InputItem", InputItem.Item.Name);
-			info.AddValue("OutputItem", OutputItem.Item.Name);
-			info.AddValue("BaseQuality", InputItem.Quality.Name);
-		}
 
 		public override string ToString() { return string.Format("Spoil node for: {0} ({2}) to {1} ({2})", InputItem.Item.Name, OutputItem.Item.Name, InputItem.Quality.Name); }
 	}

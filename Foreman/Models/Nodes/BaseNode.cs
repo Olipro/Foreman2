@@ -1,37 +1,42 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Xml.Schema;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TreeView;
 
 namespace Foreman
 {
 	public enum RateType { Auto, Manual };
 	public enum NodeState { Clean, MissingLink, Warning, Error }
-	public enum NodeDirection { Up, Down }
+	public enum NodeDirection : int { Up, Down }
 
 	[Serializable]
-	public abstract partial class BaseNode : ISerializable
+	[JsonObject(MemberSerialization.OptIn)]
+	public abstract partial class BaseNode
 	{
 		public abstract BaseNodeController Controller { get; }
 		public ReadOnlyBaseNode ReadOnlyNode { get; protected set; }
 		public readonly ProductionGraph MyGraph;
+		[JsonProperty]
 		public readonly int NodeID;
 
 		public bool IsClean { get; protected set; } //if true then this node hasnt changed (internal values or links) since last solver solution
 
 		public bool KeyNode { get; set; }
+		[JsonProperty("KeyNode")]
 		public string KeyNodeTitle { get; set; }
 
+		public bool ShouldSerializeKeyNodeTitle() => KeyNode;
+
+		[JsonProperty]
 		public Point Location { get; set; }
 
 		private RateType rateType;
+		[JsonProperty]
 		public RateType RateType { get { return rateType; } set { if (rateType != value) { rateType = value; UpdateState(); } } }
 
 		private NodeDirection nodeDirection;
+		[JsonProperty("Direction")]
 		public NodeDirection NodeDirection { get { return nodeDirection; } set { if(nodeDirection != value) { nodeDirection = value; OnNodeStateChanged(); } } }
 
 		public double ActualRatePerSec { get; private set; }
@@ -46,9 +51,12 @@ namespace Foreman
 		//ex: recipe nodes will use this to 'set' the number of assemblers, passthrough/source/sink nodes use this to 'set' flowrate, plant nodes set 'plant tiles' and spoil nodes set 'inventory stacks'
 		//in its default form (below) its used for 'flowrate'
 		public virtual double ActualSetValue { get { return ActualRate; } }
+		[JsonProperty]
 		public virtual double DesiredSetValue { get { return DesiredRate; } set { DesiredRate = value; } }
 		public virtual double MaxDesiredSetValue { get { return ProductionGraph.MaxSetFlow; } }
 		public virtual string SetValueDescription { get { return string.Format("Item Flowrate (per {0})", MyGraph.GetRateName()); } }
+
+		public bool ShouldSerializeDesiredSetValue() => RateType == RateType.Manual;
 
 		public abstract IEnumerable<ItemQualityPair> Inputs { get; }
 		public abstract IEnumerable<ItemQualityPair> Outputs { get; }
@@ -135,19 +143,6 @@ namespace Foreman
 		public bool ManualRateNotMet()
 		{
 			return (RateType == RateType.Manual) && Math.Abs(ActualRatePerSec - DesiredRatePerSec) > 0.0001;
-		}
-
-		public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			info.AddValue("NodeID", NodeID);
-			info.AddValue("Location", Location);
-			info.AddValue("RateType", RateType);
-			info.AddValue("Direction", NodeDirection);
-
-            if (RateType == RateType.Manual)
-                info.AddValue("DesiredSetValue", DesiredSetValue); 
-			if (KeyNode)
-				info.AddValue("KeyNode", KeyNodeTitle);
 		}
 	}
 

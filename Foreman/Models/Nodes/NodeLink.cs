@@ -1,11 +1,11 @@
-﻿using System;
-using System.Linq;
-using System.Runtime.Serialization;
+﻿using Newtonsoft.Json;
+using System;
 
 namespace Foreman
 {
 	[Serializable]
-	public class NodeLink : ISerializable
+	[JsonObject(MemberSerialization.OptIn)]
+	public class NodeLink
 	{
 		private readonly NodeLinkController controller;
 		public NodeLinkController Controller { get { return controller; } }
@@ -21,6 +21,15 @@ namespace Foreman
 		public readonly BaseNode SupplierNode;
 		public readonly BaseNode ConsumerNode;
 
+		[JsonProperty]
+		public int SupplierID => SupplierNode.NodeID;
+		[JsonProperty]
+		public int ConsumerID => ConsumerNode.NodeID;
+		[JsonProperty("Item")]
+		public string jsonItem => Item.Item.Name;
+		[JsonProperty]
+		public string Quality => Item.Quality.Name;
+
 		internal NodeLink(ProductionGraph myGraph, BaseNode supplier, BaseNode consumer, ItemQualityPair item)
 		{
 			MyGraph = myGraph;
@@ -34,15 +43,7 @@ namespace Foreman
 			IsValid = LinkChecker.IsPossibleConnection(Item, SupplierNode.ReadOnlyNode, ConsumerNode.ReadOnlyNode); //only need to check once -> item & recipe temperatures cant change.
 		}
 
-		public void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			info.AddValue("SupplierID", SupplierNode.NodeID);
-			info.AddValue("ConsumerID", ConsumerNode.NodeID);
-			info.AddValue("Item", Item.Item.Name);
-			info.AddValue("Quality", Item.Quality.Name);
-		}
-
-		public override string ToString() { return string.Format("NodeLink for {0} ({1}) connecting {1} -> {2}", Item.Item.Name, Item.Quality.Name, SupplierNode.NodeID, ConsumerNode.NodeID); }
+		public override string ToString() => string.Format("NodeLink for {0} ({1}) connecting {2} -> {3}", Item.Item.Name, Item.Quality.Name, SupplierNode.NodeID, ConsumerNode.NodeID);
 	}
 
 	public class ReadOnlyNodeLink

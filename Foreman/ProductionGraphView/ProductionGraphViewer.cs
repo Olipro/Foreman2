@@ -4,13 +4,13 @@ using System.Drawing;
 using System.Data;
 using System.Linq;
 using System.Windows.Forms;
-using System.Runtime.Serialization;
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using System.Text;
 using System.IO;
 using System.Threading.Tasks;
+using System.ComponentModel;
 
 namespace Foreman
 {
@@ -18,35 +18,53 @@ namespace Foreman
 	public enum NodeDrawingStyle { Regular, PrintStyle, Simple, IconsOnly } //printstyle is meant for any additional chages (from regular) for exporting to image format, simple will only draw the node boxes (no icons or text) and link lines, iconsonly will draw node icons instead of nodes (for zoomed view)
 
 	[Serializable]
-	public partial class ProductionGraphViewer : UserControl, ISerializable
+	[JsonObject(MemberSerialization.OptIn)]
+	public partial class ProductionGraphViewer : UserControl
 	{
 		private enum DragOperation { None, Item, Selection }
 		public enum LOD { Low, Medium, High } //low: only names. medium: assemblers, beacons, etc. high: include assembler percentages
 
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public LOD LevelOfDetail { get; set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public bool ArrowsOnLinks { get; set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public bool IconsOnly { get; set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public int IconsSize { get; set; }
 		public int IconsDrawSize { get { return ViewScale > ((double)IconsSize / 96)? 96 : (int)(IconsSize / ViewScale); } }
 
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public int NodeCountForSimpleView { get; set; } //if the number of elements to draw is over this amount then the drawing functions will switch to simple view draws (mostly for FPS during zoomed out views)
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public bool ShowRecipeToolTip { get; set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public bool TooltipsEnabled { get; set; }
 		private bool SubwindowOpen; //used together with tooltip enabled -> if we open up an item/recipe/assembler window, this will halt tooltip show.
 		public bool DynamicLinkWidth = false;
 		public bool LockedRecipeEditPanelPosition = true;
 		public bool FlagOUSuppliedNodes = false; //if true, will add a flag for over or under supplied nodes
 
+
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public bool SmartNodeDirection { get; set; }
 
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public DataCache DCache { get; set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		[JsonProperty("ProductionGraph")]
 		public ProductionGraph Graph { get; private set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public GridManager Grid { get; private set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public FloatingTooltipRenderer ToolTipRenderer { get; private set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public PointingArrowRenderer ArrowRenderer { get; private set; }
 
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public Quality LastAssemblerQuality { get; private set; } //quality of the last-edited recipe's assembler (used when placing new recipe nodes)
 
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public GraphElement MouseDownElement { get; set; }
 
 		public IReadOnlyDictionary<ReadOnlyBaseNode, BaseNodeElement> NodeElementDictionary { get { return nodeElementDictionary; } }
@@ -54,8 +72,13 @@ namespace Foreman
 
 		public IReadOnlyCollection<BaseNodeElement> SelectedNodes { get { return selectedNodes; } }
 
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		[JsonProperty]
 		public Point ViewOffset { get; private set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		[JsonProperty]
 		public float ViewScale { get; private set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public Rectangle VisibleGraphBounds { get; private set; }
 
 		private const int minDragDiff = 30;
@@ -85,7 +108,34 @@ namespace Foreman
 		private HashSet<BaseNodeElement> selectedNodes; //main list of selected nodes
 		private HashSet<BaseNodeElement> currentSelectionNodes; //list of nodes currently under the selection zone (which can be added/removed/replace the full list)
 
-		private ContextMenu rightClickMenu = new ContextMenu();
+		private ContextMenuStrip rightClickMenu = new();
+
+		[JsonProperty]
+		public int Version => Properties.Settings.Default.ForemanVersion;
+		[JsonProperty]
+		public string Object => "ProductionGraphViewer";
+		[JsonProperty]
+		public string SavedPresetName => DCache.PresetName;
+		[JsonProperty]
+		public IEnumerable<string> IncludedMods => DCache.IncludedMods.Select(m => m.Key + "|" + m.Value);
+		[JsonProperty]
+		public ProductionGraph.RateUnit Unit => Graph.SelectedRateUnit;
+		[JsonProperty]
+		public bool ExtraProdForNonMiners => Graph.EnableExtraProductivityForNonMiners;
+		[JsonProperty]
+		public AssemblerSelector.Style AssemblerSelectorStyle => Graph.AssemblerSelector.DefaultSelectionStyle;
+		[JsonProperty]
+		public ModuleSelector.Style ModuleSelectorStyle => Graph.ModuleSelector.DefaultSelectionStyle;
+		[JsonProperty]
+		public IEnumerable<string> FuelPriorityList => Graph.FuelSelector.FuelPriority.Select(i => i.Name);
+		[JsonProperty]
+		public IEnumerable<string> EnabledRecipes => DCache.Recipes.Values.Where(r => r.Enabled).Select(r => r.Name);
+		[JsonProperty]
+		public IEnumerable<string> EnabledAssemblers => DCache.Assemblers.Values.Where(a => a.Enabled).Select(a => a.Name);
+		[JsonProperty]
+		public IEnumerable<string> EnabledModules => DCache.Modules.Values.Where(m => m.Enabled).Select(m => m.Name);
+		[JsonProperty]
+		public IEnumerable<string> EnabledBeacons => DCache.Beacons.Values.Where(b => b.Enabled).Select(b => b.Name);
 
 		public ProductionGraphViewer()
 		{
@@ -814,17 +864,17 @@ namespace Foreman
 						Point screenPoint = new Point(e.Location.X - 150, 15);
 						screenPoint.X = Math.Max(15, Math.Min(Width - 650, screenPoint.X)); //want to position the recipe selector such that it is well visible.
 
-						rightClickMenu.MenuItems.Clear();
-						rightClickMenu.MenuItems.Add(new MenuItem("Add Item",
+						rightClickMenu.Items.Clear();
+						rightClickMenu.Items.Add("Add Item", null,
 							new EventHandler((o, ee) =>
 							{
 								AddItem(screenPoint, ScreenToGraph(e.Location));
-							})));
-						rightClickMenu.MenuItems.Add(new MenuItem("Add Recipe",
+							}));
+						rightClickMenu.Items.Add("Add Recipe", null,
 							new EventHandler((o, ee) =>
 							{
 								AddNewNode(screenPoint, new ItemQualityPair("adding disconnected recipe"), ScreenToGraph(e.Location), NewNodeType.Disconnected);
-							})));
+							}));
 						rightClickMenu.Show(this, e.Location);
 					}
 					else if(currentDragOperation != DragOperation.Selection)
@@ -1193,36 +1243,6 @@ namespace Foreman
 		}
 
 		//----------------------------------------------Save/Load JSON functions
-
-		public void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			//preset options
-			info.AddValue("Version", Properties.Settings.Default.ForemanVersion);
-			info.AddValue("Object", "ProductionGraphViewer");
-			info.AddValue("SavedPresetName", DCache.PresetName);
-			info.AddValue("IncludedMods", DCache.IncludedMods.Select(m => m.Key + "|" + m.Value));
-
-			//graph viewer options
-			info.AddValue("Unit", Graph.SelectedRateUnit);
-			info.AddValue("ViewOffset", ViewOffset);
-			info.AddValue("ViewScale", ViewScale);
-
-			//graph defaults (saved here instead of within the graph since they are used here, plus they arent used during copy/paste)
-			info.AddValue("ExtraProdForNonMiners", Graph.EnableExtraProductivityForNonMiners);
-			info.AddValue("AssemblerSelectorStyle", Graph.AssemblerSelector.DefaultSelectionStyle);
-			info.AddValue("ModuleSelectorStyle", Graph.ModuleSelector.DefaultSelectionStyle);
-			info.AddValue("FuelPriorityList", Graph.FuelSelector.FuelPriority.Select(i => i.Name));
-
-			//enabled lists
-			info.AddValue("EnabledRecipes", DCache.Recipes.Values.Where(r => r.Enabled).Select(r => r.Name));
-			info.AddValue("EnabledAssemblers", DCache.Assemblers.Values.Where(a => a.Enabled).Select(a => a.Name));
-			info.AddValue("EnabledModules", DCache.Modules.Values.Where(m => m.Enabled).Select(m => m.Name));
-			info.AddValue("EnabledBeacons", DCache.Beacons.Values.Where(b => b.Enabled).Select(b => b.Name));
-			//planting results are always enabled
-
-			//graph :)
-			info.AddValue("ProductionGraph", Graph);
-		}
 
 		public void ImportNodesFromJson(JObject json, Point origin, bool loadSolverValues)
 		{

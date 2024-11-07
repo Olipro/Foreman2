@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.Serialization;
 
 namespace Foreman
 {
+	[Serializable]
+	[JsonObject(MemberSerialization.OptIn)]
 	public class PassthroughNode : BaseNode
 	{
         public enum Errors
@@ -23,7 +25,19 @@ namespace Foreman
 		public override IEnumerable<ItemQualityPair> Inputs { get { yield return PassthroughItem; } }
 		public override IEnumerable<ItemQualityPair> Outputs { get { yield return PassthroughItem; } }
 
+		[JsonProperty("SDraw")]
 		public bool SimpleDraw;
+
+		[JsonProperty]
+		public NodeType NodeType => NodeType.Passthrough;
+		[JsonProperty]
+		public string Item => PassthroughItem.Item.Name;
+		[JsonProperty]
+		public string BaseQuality => PassthroughItem.Quality.Name;
+		[JsonProperty]
+		public new double DesiredRate => DesiredRatePerSec;
+
+		public bool ShouldSerializeDesiredRate() => RateType == RateType.Manual;
 
 		public PassthroughNode(ProductionGraph graph, int nodeID, ItemQualityPair item) : base(graph, nodeID)
 		{
@@ -53,18 +67,6 @@ namespace Foreman
 
 		internal override double inputRateFor(ItemQualityPair item) { return 1; }
 		internal override double outputRateFor(ItemQualityPair item) { return 1; }
-
-		public override void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			base.GetObjectData(info, context);
-
-            info.AddValue("NodeType", NodeType.Passthrough);
-            info.AddValue("Item", PassthroughItem.Item.Name);
-            info.AddValue("BaseQuality", PassthroughItem.Quality.Name);
-            if (RateType == RateType.Manual)
-                info.AddValue("DesiredRate", DesiredRatePerSec);
-			info.AddValue("SDraw", SimpleDraw);
-		}
 
         public override string ToString() { return string.Format("Supply node for: {0} ({1})", PassthroughItem.Item.Name, PassthroughItem.Quality.Name); }
     }

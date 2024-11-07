@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.ComponentModel;
 
 namespace Foreman
 {
@@ -19,7 +20,9 @@ namespace Foreman
 		private char[] ExtraChars = { '(', ')', '-', '_', '.', ' ' };
 		private CancellationTokenSource cts;
 
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public string NewPresetName { get; private set; }
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public bool ImportStarted { get; private set; }
 
 		public PresetImportForm()

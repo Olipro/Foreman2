@@ -12,6 +12,7 @@ namespace Foreman
 	//NOTE: using the 'sendmessage' approached failed, so had to switch to a 'set-top-index' approach
 	class SyncListView : FFListView
 	{
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public SyncListView Buddy { get; set; }
 
 		[DefaultValue(true)]

@@ -1,27 +1,54 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Foreman
 {
 	[Serializable]
-	public class NodeCopyOptions : ISerializable
+	[JsonObject(MemberSerialization.OptIn)]
+	public class NodeCopyOptions
 	{
 		public readonly AssemblerQualityPair Assembler;
+		[JsonProperty("AModules")]
 		public readonly IReadOnlyList<ModuleQualityPair> AssemblerModules;
 		public readonly Item Fuel;
+		[JsonProperty("Neighbours")]
 		public readonly double NeighbourCount;
+		[JsonProperty("ExtraProductivity")]
 		public readonly double ExtraProductivityBonus;
 
 		public readonly BeaconQualityPair Beacon;
+		[JsonProperty("BModules")]
 		public readonly IReadOnlyList<ModuleQualityPair> BeaconModules;
+		[JsonProperty]
 		public readonly double BeaconCount;
+		[JsonProperty("BeaconsPA")]
 		public readonly double BeaconsPerAssembler;
+		[JsonProperty("BeaconsC")]
 		public readonly double BeaconsConst;
+
+		[JsonProperty]
+		public int Version => Properties.Settings.Default.ForemanVersion;
+		[JsonProperty]
+		public string Object => "NodeCopyOptions";
+		[JsonProperty("Assembler")]
+		public string jsonAssembler => Assembler.Assembler.Name;
+		[JsonProperty]
+		public string AssemblerQuality => Assembler.Quality.Name;
+		[JsonProperty("Fuel")]
+		public string jsonFuel => Fuel.Name;
+		[JsonProperty("Beacon")]
+		public string jsonBeacon => Beacon.Beacon.Name;
+		[JsonProperty]
+		public string BeaconQuality => Beacon.Quality.Name;
+
+		public bool ShouldSerializejsonFuel() => Fuel != null;
+		public bool ShouldSerializejsonBeacon() => Beacon;
+		public bool ShouldSerializeBeaconQuality() => Beacon;
+		public bool ShouldSerializeBeaconCount() => Beacon;
+		public bool ShouldSerializeBeaconsPerAssembler() => Beacon;
+		public bool ShouldSerializeBeaconsConst() => Beacon;
 
 		public NodeCopyOptions(ReadOnlyRecipeNode node)
 		{
@@ -107,31 +134,6 @@ namespace Foreman
 				beacons ? (double)json["BeaconsPA"] : 0,
 				beacons ? (double)json["BeaconsC"] : 0);
 			return nco;
-		}
-
-		public void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			info.AddValue("Version", Properties.Settings.Default.ForemanVersion);
-			info.AddValue("Object", "NodeCopyOptions");
-			info.AddValue("Assembler", Assembler.Assembler.Name);
-			info.AddValue("AssemblerQuality", Assembler.Quality.Name);
-
-			info.AddValue("Neighbours", NeighbourCount);
-			info.AddValue("ExtraProductivity", ExtraProductivityBonus);
-			info.AddValue("AModules", AssemblerModules);
-			info.AddValue("BModules", BeaconModules);
-
-			if (Fuel != null)
-				info.AddValue("Fuel", Fuel.Name);
-
-			if (Beacon)
-			{
-				info.AddValue("Beacon", Beacon.Beacon.Name);
-				info.AddValue("BeaconQuality", Beacon.Quality.Name);
-				info.AddValue("BeaconCount", BeaconCount);
-				info.AddValue("BeaconsPA", BeaconsPerAssembler);
-				info.AddValue("BeaconsC", BeaconsConst);
-			}
 		}
 	}
 }

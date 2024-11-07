@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using Newtonsoft.Json;
+
+using System;
 using System.Drawing;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Foreman
 { 
@@ -58,10 +54,17 @@ namespace Foreman
         }
     }
 
-    public readonly struct ModuleQualityPair : ISerializable
+	[Serializable]
+	[JsonObject(MemberSerialization.OptIn)]
+    public readonly struct ModuleQualityPair
     {
         public readonly Module Module;
         public readonly Quality Quality;
+
+		[JsonProperty]
+		public readonly string Name => Module.Name;
+		[JsonProperty("Quality")]
+		public readonly string strQuality => Quality.Name;
 
         public ModuleQualityPair(Module module, Quality quality)
         {
@@ -79,12 +82,6 @@ namespace Foreman
         public static bool operator !=(ModuleQualityPair lhs, ModuleQualityPair rhs) => !(lhs == rhs);
         public static implicit operator bool(ModuleQualityPair bp) => bp != null && bp.Module != null && bp.Quality != null;
         public override string ToString() { return Module.ToString() + " (" + Quality.ToString() + ")"; }
-
-        public void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue("Name", Module.Name);
-            info.AddValue("Quality", Quality.Name);
-        }
 
         public string FriendlyName
         {

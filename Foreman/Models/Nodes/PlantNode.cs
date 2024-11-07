@@ -1,12 +1,13 @@
-﻿using Newtonsoft.Json.Serialization;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.Serialization;
+using Newtonsoft.Json;
 
 namespace Foreman
 {
+	[Serializable]
+	[JsonObject(MemberSerialization.OptIn)]
 	public class PlantNode : BaseNode
 	{
         public enum Errors
@@ -46,6 +47,13 @@ namespace Foreman
 
         public override double DesiredRatePerSec { get { return DesiredSetValue / Seed.Item.PlantResult.GrowTime; } }
 
+		[JsonProperty]
+		public NodeType NodeType => NodeType.Plant;
+		[JsonProperty]
+		public long PlantProcessID => BasePlantProcess.PlantID;
+		[JsonProperty]
+		public string BaseQuality => Seed.Quality.Name;
+
         public PlantNode(ProductionGraph graph, int nodeID, ItemQualityPair item) : this(graph, nodeID, item.Item.PlantResult, item.Quality) { }
 		public PlantNode(ProductionGraph graph, int nodeID, PlantProcess plantProcess, Quality quality) : base(graph, nodeID)
         {
@@ -84,16 +92,6 @@ namespace Foreman
 
 		internal override double inputRateFor(ItemQualityPair item) { return 1; }
 		internal override double outputRateFor(ItemQualityPair item) { return BasePlantProcess.ProductSet[item.Item]; }
-
-		public override void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			base.GetObjectData(info, context);
-
-			info.AddValue("NodeType", NodeType.Plant);
-			info.AddValue("PlantProcessID", BasePlantProcess.PlantID);
-			info.AddValue("BaseQuality", Seed.Quality.Name);
-		}
-
 		public override string ToString() { return string.Format("Plant Growth node for: {0} ({1})", Seed.Item.Name, Seed.Quality.Name); }
 	}
 

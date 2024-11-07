@@ -1,15 +1,11 @@
-﻿using Google.OrTools.LinearSolver;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Eventing.Reader;
 using System.Drawing;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Runtime.Serialization;
-using System.Text;
-using System.Xml.Linq;
 
 namespace Foreman
 {
@@ -28,10 +24,9 @@ namespace Foreman
 	}
 
 	[Serializable]
-	public partial class ProductionGraph : ISerializable
-	{
-		public class NewNodeCollection
-		{
+	[JsonObject(MemberSerialization.OptIn)]
+	public partial class ProductionGraph {
+		public class NewNodeCollection {
 			public List<ReadOnlyBaseNode> newNodes { get; private set; }
 			public List<ReadOnlyNodeLink> newLinks { get; private set; }
 			public NewNodeCollection() { newNodes = new List<ReadOnlyBaseNode>(); newLinks = new List<ReadOnlyNodeLink>(); }
@@ -47,6 +42,7 @@ namespace Foreman
 		public float GetRateMultipler() { return RateMultiplier[(int)SelectedRateUnit]; } //the amount of assemblers required will be multipled by the rate multipler when displaying.
 		public string GetRateName() { return RateUnitNames[(int)SelectedRateUnit]; }
 
+		[JsonProperty]
 		public NodeDirection DefaultNodeDirection { get; set; }
 		public bool DefaultToSimplePassthroughNodes { get; set; }
 
@@ -58,9 +54,13 @@ namespace Foreman
 		private const int YBorder = 200;
 
 		public bool PauseUpdates { get; set; }
+		[JsonProperty("Solver_PullOutputNodes")]
 		public bool PullOutputNodes { get; set; } //if true, the solver will add a 'pull' for output nodes so as to prioritize them over lowering factory count. WARNING: this can lead to '0' solutions if there is any production path that can go to infinity (aka: ensure enough nodes are constrained!)
+		[JsonProperty("Solver_PullOutputNodesPower")]
 		public double PullOutputNodesPower { get; set; }
+		[JsonProperty("Solver_LowPriorityPower")]
 		public double LowPriorityPower { get; set; } //this is the multiplier of the factory cost function for low priority nodes. aka: low priority recipes will be picked if the alternative involves this much more factories (10,000 is a nice value here)
+		[JsonProperty]
 		public bool EnableExtraProductivityForNonMiners { get; set; }
 
 		public AssemblerSelector AssemblerSelector { get; private set; }
@@ -73,16 +73,13 @@ namespace Foreman
 
 		//editing this value will require the entire graph to be updated as any recipe nodes on it will possibly change the number of products and possibly cause a cascade of removed links
 		private uint maxQualitySteps;
-		public uint MaxQualitySteps
-		{
+		[JsonProperty]
+		public uint MaxQualitySteps {
 			get { return maxQualitySteps; }
-			set
-			{
-				if (value != maxQualitySteps)
-				{
+			set {
+				if (value != maxQualitySteps) {
 					maxQualitySteps = value;
-					foreach(BaseNode node in nodes)
-					{
+					foreach (BaseNode node in nodes) {
 						if (node is RecipeNode rnode)
 							rnode.MaxQualitySteps = maxQualitySteps;
 					}
@@ -98,10 +95,8 @@ namespace Foreman
 		public event EventHandler<NodeLinkEventArgs> LinkDeleted;
 		public event EventHandler<EventArgs> NodeValuesUpdated;
 
-		public Rectangle Bounds
-		{
-			get
-			{
+		public Rectangle Bounds {
+			get {
 				if (nodes.Count == 0)
 					return new Rectangle(0, 0, 0, 0);
 
@@ -109,8 +104,7 @@ namespace Foreman
 				int yMin = int.MaxValue;
 				int xMax = int.MinValue;
 				int yMax = int.MinValue;
-				foreach (BaseNode node in nodes)
-				{
+				foreach (BaseNode node in nodes) {
 					xMin = Math.Min(xMin, node.Location.X);
 					xMax = Math.Max(xMax, node.Location.X);
 					yMin = Math.Min(yMin, node.Location.Y);
@@ -127,8 +121,7 @@ namespace Foreman
 		private Dictionary<ReadOnlyNodeLink, NodeLink> roToLink;
 		private int lastNodeID;
 
-		public ProductionGraph()
-		{
+		public ProductionGraph() {
 			DefaultNodeDirection = NodeDirection.Up;
 			PullOutputNodes = false;
 			PullOutputNodesPower = 10;
@@ -145,10 +138,9 @@ namespace Foreman
 			FuelSelector = new FuelSelector();
 		}
 
-		public BaseNodeController RequestNodeController(ReadOnlyBaseNode node) { if(roToNode.ContainsKey(node)) return roToNode[node].Controller; return null; }
+		public BaseNodeController RequestNodeController(ReadOnlyBaseNode node) { if (roToNode.ContainsKey(node)) return roToNode[node].Controller; return null; }
 
-		public ReadOnlyConsumerNode CreateConsumerNode(ItemQualityPair item, Point location)
-		{
+		public ReadOnlyConsumerNode CreateConsumerNode(ItemQualityPair item, Point location) {
 			ConsumerNode node = new ConsumerNode(this, lastNodeID++, item);
 			node.Location = location;
 			node.NodeDirection = DefaultNodeDirection;
@@ -159,8 +151,7 @@ namespace Foreman
 			return (ReadOnlyConsumerNode)node.ReadOnlyNode;
 		}
 
-		public ReadOnlySupplierNode CreateSupplierNode(ItemQualityPair item, Point location)
-		{
+		public ReadOnlySupplierNode CreateSupplierNode(ItemQualityPair item, Point location) {
 			SupplierNode node = new SupplierNode(this, lastNodeID++, item);
 			node.Location = location;
 			node.NodeDirection = DefaultNodeDirection;
@@ -171,8 +162,7 @@ namespace Foreman
 			return (ReadOnlySupplierNode)node.ReadOnlyNode;
 		}
 
-		public ReadOnlyPassthroughNode CreatePassthroughNode(ItemQualityPair item, Point location)
-		{
+		public ReadOnlyPassthroughNode CreatePassthroughNode(ItemQualityPair item, Point location) {
 			PassthroughNode node = new PassthroughNode(this, lastNodeID++, item);
 			node.Location = location;
 			node.NodeDirection = DefaultNodeDirection;
@@ -184,8 +174,7 @@ namespace Foreman
 			return (ReadOnlyPassthroughNode)node.ReadOnlyNode;
 		}
 
-		public ReadOnlySpoilNode CreateSpoilNode(ItemQualityPair inputItem, Item outputItem, Point location)
-		{
+		public ReadOnlySpoilNode CreateSpoilNode(ItemQualityPair inputItem, Item outputItem, Point location) {
 			SpoilNode node = new SpoilNode(this, lastNodeID++, inputItem, outputItem);
 			node.Location = location;
 			node.NodeDirection = DefaultNodeDirection;
@@ -196,27 +185,25 @@ namespace Foreman
 			return (ReadOnlySpoilNode)node.ReadOnlyNode;
 		}
 
-        public ReadOnlyPlantNode CreatePlantNode(PlantProcess plantProcess, Quality quality, Point location)
-        {
+		public ReadOnlyPlantNode CreatePlantNode(PlantProcess plantProcess, Quality quality, Point location) {
 			PlantNode node = new PlantNode(this, lastNodeID++, plantProcess, quality);
-            node.Location = location;
-            node.NodeDirection = DefaultNodeDirection;
-            nodes.Add(node);
-            roToNode.Add(node.ReadOnlyNode, node);
-            node.UpdateState();
-            NodeAdded?.Invoke(this, new NodeEventArgs(node.ReadOnlyNode));
-            return (ReadOnlyPlantNode)node.ReadOnlyNode;
-        }
+			node.Location = location;
+			node.NodeDirection = DefaultNodeDirection;
+			nodes.Add(node);
+			roToNode.Add(node.ReadOnlyNode, node);
+			node.UpdateState();
+			NodeAdded?.Invoke(this, new NodeEventArgs(node.ReadOnlyNode));
+			return (ReadOnlyPlantNode)node.ReadOnlyNode;
+		}
 
-        public ReadOnlyRecipeNode CreateRecipeNode(RecipeQualityPair recipe, Point location) { return CreateRecipeNode(recipe, location, null); }
+		public ReadOnlyRecipeNode CreateRecipeNode(RecipeQualityPair recipe, Point location) { return CreateRecipeNode(recipe, location, null); }
 		private ReadOnlyRecipeNode CreateRecipeNode(RecipeQualityPair recipe, Point location, Action<RecipeNode> nodeSetupAction) //node setup action is used to populate the node prior to informing everyone of its creation
 		{
 			RecipeNode node = new RecipeNode(this, lastNodeID++, recipe, DefaultAssemblerQuality);
 			node.Location = location;
 			node.NodeDirection = DefaultNodeDirection;
 			nodeSetupAction?.Invoke(node);
-			if(nodeSetupAction == null)
-			{
+			if (nodeSetupAction == null) {
 				RecipeNodeController rnController = (RecipeNodeController)node.Controller;
 				rnController.AutoSetAssembler();
 				rnController.AutoSetAssemblerModules();
@@ -228,8 +215,7 @@ namespace Foreman
 			return (ReadOnlyRecipeNode)node.ReadOnlyNode;
 		}
 
-		public ReadOnlyNodeLink CreateLink(ReadOnlyBaseNode supplier, ReadOnlyBaseNode consumer, ItemQualityPair item)
-		{
+		public ReadOnlyNodeLink CreateLink(ReadOnlyBaseNode supplier, ReadOnlyBaseNode consumer, ItemQualityPair item) {
 			if (!roToNode.ContainsKey(supplier) || !roToNode.ContainsKey(consumer) || !supplier.Outputs.Contains(item) || !consumer.Inputs.Contains(item))
 				Trace.Fail(string.Format("Node link creation called with invalid parameters! consumer:{0}. supplier:{1}. item:{2}.", consumer.ToString(), supplier.ToString(), item.ToString()));
 			if (supplier.OutputLinks.Any(l => l.Item == item && l.Consumer == consumer)) //check for an already existing connection
@@ -250,8 +236,7 @@ namespace Foreman
 			return link.ReadOnlyLink;
 		}
 
-		public void DeleteNode(ReadOnlyBaseNode node)
-		{
+		public void DeleteNode(ReadOnlyBaseNode node) {
 			if (!roToNode.ContainsKey(node))
 				Trace.Fail(string.Format("Node deletion called on a node ({0}) that isnt part of the graph!", node.ToString()));
 
@@ -265,14 +250,12 @@ namespace Foreman
 			NodeDeleted?.Invoke(this, new NodeEventArgs(node));
 		}
 
-		public void DeleteNodes(IEnumerable<ReadOnlyBaseNode> nodes)
-		{
+		public void DeleteNodes(IEnumerable<ReadOnlyBaseNode> nodes) {
 			foreach (ReadOnlyBaseNode node in nodes)
 				DeleteNode(node);
 		}
 
-		public void DeleteLink(ReadOnlyNodeLink link)
-		{
+		public void DeleteLink(ReadOnlyNodeLink link) {
 			if (!roToLink.ContainsKey(link) || !roToNode.ContainsKey(link.Consumer) || !roToNode.ContainsKey(link.Supplier))
 				Trace.Fail(string.Format("Link deletion called with a link ({0}) that isnt part of the graph, or whose node(s) ({1}), ({2}) is/are not part of the graph!", link.ToString(), link.Consumer.ToString(), link.Supplier.ToString()));
 
@@ -287,8 +270,7 @@ namespace Foreman
 			LinkDeleted?.Invoke(this, new NodeLinkEventArgs(link));
 		}
 
-		public void ClearGraph()
-		{
+		public void ClearGraph() {
 			foreach (BaseNode node in nodes.ToList())
 				DeleteNode(node.ReadOnlyNode);
 
@@ -296,30 +278,25 @@ namespace Foreman
 			lastNodeID = 0;
 		}
 
-		public void UpdateNodeMaxQualities()
-		{
-			foreach(RecipeNode rnode in nodes.Where(n => n is RecipeNode).Cast<RecipeNode>())
-			{
+		public void UpdateNodeMaxQualities() {
+			foreach (RecipeNode rnode in nodes.Where(n => n is RecipeNode).Cast<RecipeNode>()) {
 				rnode.UpdateInputsAndOutputs(true);
 				rnode.UpdateState();
 			}
 		}
 
-		public void UpdateNodeStates(bool markAllAsDirty)
-		{
+		public void UpdateNodeStates(bool markAllAsDirty) {
 			foreach (BaseNode node in nodes)
 				node.UpdateState(markAllAsDirty);
 		}
 
-		public IEnumerable<ReadOnlyBaseNode> GetSuppliers(ItemQualityPair item)
-		{
+		public IEnumerable<ReadOnlyBaseNode> GetSuppliers(ItemQualityPair item) {
 			foreach (ReadOnlyBaseNode node in Nodes)
 				if (node.Outputs.Contains(item))
 					yield return node;
 		}
 
-		public IEnumerable<ReadOnlyBaseNode> GetConsumers(ItemQualityPair item)
-		{
+		public IEnumerable<ReadOnlyBaseNode> GetConsumers(ItemQualityPair item) {
 			foreach (ReadOnlyBaseNode node in Nodes)
 				if (node.Inputs.Contains(item))
 					yield return node;
@@ -336,16 +313,14 @@ namespace Foreman
 
 			List<HashSet<BaseNode>> connectedComponents = new List<HashSet<BaseNode>>();
 
-			while (unvisitedNodes.Any())
-			{
+			while (unvisitedNodes.Any()) {
 				HashSet<BaseNode> newSet = new HashSet<BaseNode>();
 				bool allClean = true;
 
 				HashSet<BaseNode> toVisitNext = new HashSet<BaseNode>();
 				toVisitNext.Add(unvisitedNodes.First());
 
-				while (toVisitNext.Any())
-				{
+				while (toVisitNext.Any()) {
 					BaseNode currentNode = toVisitNext.First();
 					allClean &= currentNode.IsClean;
 
@@ -368,12 +343,9 @@ namespace Foreman
 			return connectedComponents;
 		}
 
-		public void UpdateNodeValues()
-		{
-			if (!PauseUpdates)
-			{
-				try { OptimizeGraphNodeValues(); }
-				catch (OverflowException) { } //overflow can theoretically be possible for extremely unbalanced recipes, but with the limit of double and the artificial limit set on max throughput this should never happen.
+		public void UpdateNodeValues() {
+			if (!PauseUpdates) {
+				try { OptimizeGraphNodeValues(); } catch (OverflowException) { } //overflow can theoretically be possible for extremely unbalanced recipes, but with the limit of double and the artificial limit set on max throughput this should never happen.
 			}
 			NodeValuesUpdated?.Invoke(this, EventArgs.Empty); //called even if no changes have been made in order to re-draw the graph (since something required a node value update - link deletion? node addition? whatever)
 		}
@@ -381,21 +353,17 @@ namespace Foreman
 		private void LinkChangeUpdateImpactedNodeStates(NodeLink link, LinkType direction) //helper function to update all the impacted nodes after addition/removal of a given link. Basically we want to update any node connected to this link through passthrough nodes (or directly).
 		{
 			HashSet<NodeLink> visitedLinks = new HashSet<NodeLink>(); //to prevent a loop
-			void Internal_UpdateLinkedNodes(NodeLink ilink)
-			{
+			void Internal_UpdateLinkedNodes(NodeLink ilink) {
 				if (visitedLinks.Contains(ilink))
 					return;
 				visitedLinks.Add(ilink);
 
-				if (direction == LinkType.Output)
-				{
+				if (direction == LinkType.Output) {
 					ilink.ConsumerNode.UpdateState();
 					if (ilink.ConsumerNode is PassthroughNode)
 						foreach (NodeLink secondaryLink in ilink.ConsumerNode.OutputLinks)
 							Internal_UpdateLinkedNodes(secondaryLink);
-				}
-				else
-				{
+				} else {
 					ilink.SupplierNode.UpdateState();
 					if (ilink.SupplierNode is PassthroughNode)
 						foreach (NodeLink secondaryLink in ilink.SupplierNode.InputLinks)
@@ -409,115 +377,131 @@ namespace Foreman
 
 		//----------------------------------------------Save/Load JSON functions
 
-		public void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
+		private class JSONSerialisationData {
+			public HashSet<BaseNode> includedNodes;
+			public HashSet<NodeLink> includedLinks;
+			public HashSet<string> includedItems = new();
+			public HashSet<string> includedAssemblers = new();
+			public HashSet<string> includedModules = new();
+			public HashSet<string> includedBeacons = new();
+			public HashSet<KeyValuePair<string, int>> includedQualities = new(); //name,level
+			public List<RecipeShort> includedRecipeShorts;
+			public List<PlantShort> includedPlantShorts;
+
+			public JSONSerialisationData(HashSet<BaseNode> nodes, HashSet<NodeLink> nodeLinks) {
+				includedNodes = nodes;
+				includedLinks = nodeLinks;
+			}
+		}
+
+		[NonSerialized]
+		private JSONSerialisationData jData;
+
+		[OnSerializing]
+		internal void OnSerializingMethod(StreamingContext ctx) {
 			//collect the set of nodes and links to be saved (either entire set, or only that which is bound by the specified serialized node list)
-			HashSet<BaseNode> includedNodes = nodes;
-			HashSet<NodeLink> includedLinks = nodeLinks;
-			if (SerializeNodeIdSet != null)
-			{
-				includedNodes = new HashSet<BaseNode>(nodes.Where(node => SerializeNodeIdSet.Contains(node.NodeID)));
-				includedLinks = new HashSet<NodeLink>();
+			jData = new(nodes, nodeLinks);
+			if (SerializeNodeIdSet != null) {
+				jData.includedNodes = new HashSet<BaseNode>(nodes.Where(node => SerializeNodeIdSet.Contains(node.NodeID)));
+				jData.includedLinks = new HashSet<NodeLink>();
 				foreach (NodeLink link in nodeLinks)
-					if (includedNodes.Contains(link.ConsumerNode) && includedNodes.Contains(link.SupplierNode))
-						includedLinks.Add(link);
+					if (jData.includedNodes.Contains(link.ConsumerNode) && jData.includedNodes.Contains(link.SupplierNode))
+						jData.includedLinks.Add(link);
 			}
 
 			//prepare list of items/assemblers/modules/beacons/recipes that are part of the saved set. Recipes have to include a missing component due to the possibility of different recipes having same name (ex: regular iron.recipe, missing iron.recipe, missing iron.recipe #2)
-			HashSet<string> includedItems = new HashSet<string>();
-
-			HashSet<string> includedAssemblers = new HashSet<string>();
-			HashSet<string> includedModules = new HashSet<string>();
-			HashSet<string> includedBeacons = new HashSet<string>();
 
 			HashSet<Recipe> includedRecipes = new HashSet<Recipe>();
 			HashSet<Recipe> includedMissingRecipes = new HashSet<Recipe>(new RecipeNaInPrComparer()); //compares by name, ingredients, and products (not amounts, just items)
 			HashSet<PlantProcess> includedPlantProcesses = new HashSet<PlantProcess>();
 			HashSet<PlantProcess> includedMissingPlantProcesses = new HashSet<PlantProcess>(new PlantNaInPrComparer());
+			jData.includedQualities.Add(new KeyValuePair<string, int>(DefaultAssemblerQuality.Name, DefaultAssemblerQuality.Level));
 
-			HashSet<KeyValuePair<string, int>> includedQualities = new HashSet<KeyValuePair<string, int>>(); //name,level
-			includedQualities.Add(new KeyValuePair<string, int>(DefaultAssemblerQuality.Name, DefaultAssemblerQuality.Level));
-
-            foreach (BaseNode node in includedNodes)
-            {
-				switch(node)
-				{
+			foreach (BaseNode node in jData.includedNodes) {
+				switch (node) {
 					case RecipeNode rnode:
 						if (rnode.BaseRecipe.Recipe.IsMissing)
 							includedMissingRecipes.Add(rnode.BaseRecipe.Recipe);
 						else
 							includedRecipes.Add(rnode.BaseRecipe.Recipe);
 
-						includedAssemblers.Add(rnode.SelectedAssembler.Assembler.Name);
+						jData.includedAssemblers.Add(rnode.SelectedAssembler.Assembler.Name);
 
 						if (rnode.SelectedBeacon)
-							includedBeacons.Add(rnode.SelectedBeacon.Beacon.Name);
+							jData.includedBeacons.Add(rnode.SelectedBeacon.Beacon.Name);
 
-						includedModules.UnionWith(rnode.AssemblerModules.Select(m => m.Module.Name));
-						includedModules.UnionWith(rnode.BeaconModules.Select(m => m.Module.Name));
-                    
-						includedQualities.Add(new KeyValuePair<string, int>(rnode.BaseRecipe.Quality.Name, rnode.BaseRecipe.Quality.Level));
-						includedQualities.Add(new KeyValuePair<string, int>(rnode.SelectedAssembler.Quality.Name, rnode.SelectedAssembler.Quality.Level));
+						jData.includedModules.UnionWith(rnode.AssemblerModules.Select(m => m.Module.Name));
+						jData.includedModules.UnionWith(rnode.BeaconModules.Select(m => m.Module.Name));
+
+						jData.includedQualities.Add(new KeyValuePair<string, int>(rnode.BaseRecipe.Quality.Name, rnode.BaseRecipe.Quality.Level));
+						jData.includedQualities.Add(new KeyValuePair<string, int>(rnode.SelectedAssembler.Quality.Name, rnode.SelectedAssembler.Quality.Level));
 
 						if (rnode.SelectedBeacon)
-							includedQualities.Add(new KeyValuePair<string, int>(rnode.BaseRecipe.Quality.Name, rnode.BaseRecipe.Quality.Level));
+							jData.includedQualities.Add(new KeyValuePair<string, int>(rnode.BaseRecipe.Quality.Name, rnode.BaseRecipe.Quality.Level));
 
-						includedQualities.UnionWith(rnode.AssemblerModules.Select(m => new KeyValuePair<string, int>(m.Quality.Name, m.Quality.Level)));
-						includedQualities.UnionWith(rnode.BeaconModules.Select(m => new KeyValuePair<string, int>(m.Quality.Name, m.Quality.Level)));
+						jData.includedQualities.UnionWith(rnode.AssemblerModules.Select(m => new KeyValuePair<string, int>(m.Quality.Name, m.Quality.Level)));
+						jData.includedQualities.UnionWith(rnode.BeaconModules.Select(m => new KeyValuePair<string, int>(m.Quality.Name, m.Quality.Level)));
 						break;
 					case PlantNode pnode:
 						if (pnode.BasePlantProcess.IsMissing)
 							includedMissingPlantProcesses.Add(pnode.BasePlantProcess);
 						else
 							includedPlantProcesses.Add(pnode.BasePlantProcess);
-						includedQualities.Add(new KeyValuePair<string, int>(pnode.Seed.Quality.Name, pnode.Seed.Quality.Level));
-                        break;
-                    case ConsumerNode cnode:
-                        includedQualities.Add(new KeyValuePair<string, int>(cnode.ConsumedItem.Quality.Name, cnode.ConsumedItem.Quality.Level));
+						jData.includedQualities.Add(new KeyValuePair<string, int>(pnode.Seed.Quality.Name, pnode.Seed.Quality.Level));
+						break;
+					case ConsumerNode cnode:
+						jData.includedQualities.Add(new KeyValuePair<string, int>(cnode.ConsumedItem.Quality.Name, cnode.ConsumedItem.Quality.Level));
 						break;
 					case SupplierNode snode:
-                        includedQualities.Add(new KeyValuePair<string, int>(snode.SuppliedItem.Quality.Name, snode.SuppliedItem.Quality.Level));
-                        break;
+						jData.includedQualities.Add(new KeyValuePair<string, int>(snode.SuppliedItem.Quality.Name, snode.SuppliedItem.Quality.Level));
+						break;
 					case PassthroughNode passnode:
-                        includedQualities.Add(new KeyValuePair<string, int>(passnode.PassthroughItem.Quality.Name, passnode.PassthroughItem.Quality.Level));
+						jData.includedQualities.Add(new KeyValuePair<string, int>(passnode.PassthroughItem.Quality.Name, passnode.PassthroughItem.Quality.Level));
 						break;
 					case SpoilNode spoilnode:
-                        includedQualities.Add(new KeyValuePair<string, int>(spoilnode.InputItem.Quality.Name, spoilnode.InputItem.Quality.Level));
+						jData.includedQualities.Add(new KeyValuePair<string, int>(spoilnode.InputItem.Quality.Name, spoilnode.InputItem.Quality.Level));
 						break;
 				}
 
-                //these will process all inputs/outputs -> so fuel/burnt items are included automatically!
-                includedItems.UnionWith(node.Inputs.Select(i => i.Item.Name));
-				includedItems.UnionWith(node.Outputs.Select(i => i.Item.Name));
+				//these will process all inputs/outputs -> so fuel/burnt items are included automatically!
+				jData.includedItems.UnionWith(node.Inputs.Select(i => i.Item.Name));
+				jData.includedItems.UnionWith(node.Outputs.Select(i => i.Item.Name));
 			}
-			List<RecipeShort> includedRecipeShorts = includedRecipes.Select(recipe => new RecipeShort(recipe)).ToList();
-			includedRecipeShorts.AddRange(includedMissingRecipes.Select(recipe => new RecipeShort(recipe))); //add the missing after the regular, since when we compare saves to preset we will only check 1st recipe of its name (the non-missing kind then)
-            List<PlantShort> includedPlantShorts = includedPlantProcesses.Select(pprocess => new PlantShort(pprocess)).ToList();
-            includedPlantShorts.AddRange(includedMissingPlantProcesses.Select(pprocess => new PlantShort(pprocess))); //add the missing after the regular, since when we compare saves to preset we will only check 1st recipe of its name (the non-missing kind then)
-
-            //serialize
-            info.AddValue("Version", Properties.Settings.Default.ForemanVersion);
-			info.AddValue("Object", "ProductionGraph");
-
-			info.AddValue("EnableExtraProductivityForNonMiners", EnableExtraProductivityForNonMiners);
-			info.AddValue("DefaultNodeDirection", (int)DefaultNodeDirection);
-			info.AddValue("Solver_PullOutputNodes", PullOutputNodes);
-			info.AddValue("Solver_PullOutputNodesPower", PullOutputNodesPower);
-			info.AddValue("Solver_LowPriorityPower", LowPriorityPower);
-			info.AddValue("MaxQualitySteps", MaxQualitySteps);
-			info.AddValue("DefaultQuality", DefaultAssemblerQuality.Name);
-
-			info.AddValue("IncludedItems", includedItems);
-			info.AddValue("IncludedRecipes", includedRecipeShorts);
-            info.AddValue("IncludedPlantProcesses", includedPlantShorts);
-            info.AddValue("IncludedAssemblers", includedAssemblers);
-			info.AddValue("IncludedModules", includedModules);
-			info.AddValue("IncludedBeacons", includedBeacons);
-			info.AddValue("IncludedQualities", includedQualities);
-
-			info.AddValue("Nodes", includedNodes);
-			info.AddValue("NodeLinks", includedLinks);
+			jData.includedRecipeShorts = includedRecipes.Select(recipe => new RecipeShort(recipe)).ToList();
+			jData.includedRecipeShorts.AddRange(includedMissingRecipes.Select(recipe => new RecipeShort(recipe))); //add the missing after the regular, since when we compare saves to preset we will only check 1st recipe of its name (the non-missing kind then)
+			jData.includedPlantShorts = includedPlantProcesses.Select(pprocess => new PlantShort(pprocess)).ToList();
+			jData.includedPlantShorts.AddRange(includedMissingPlantProcesses.Select(pprocess => new PlantShort(pprocess))); //add the missing after the regular, since when we compare saves to preset we will only check 1st recipe of its name (the non-missing kind then)
 		}
+
+		[OnSerialized]
+		internal void OnSerialized(StreamingContext ctx) {
+			jData = null;
+		}
+
+		[JsonProperty]
+		public int Version => Properties.Settings.Default.ForemanVersion;
+		[JsonProperty]
+		public string Object => "ProductionGraph";
+		[JsonProperty]
+		public string DefaultQuality => DefaultAssemblerQuality.Name;
+		[JsonProperty]
+		public HashSet<string> IncludedItems => jData.includedItems;
+		[JsonProperty]
+		public List<RecipeShort> IncludedRecipes => jData.includedRecipeShorts;
+		[JsonProperty]
+		public List<PlantShort> IncludedPlantProcesses => jData.includedPlantShorts;
+		[JsonProperty]
+		public HashSet<string> IncludedAssemblers => jData.includedAssemblers;
+		[JsonProperty]
+		public HashSet<string> IncludedModules => jData.includedModules;
+		[JsonProperty]
+		public HashSet<string> IncludedBeacons => jData.includedBeacons;
+		[JsonProperty]
+		public HashSet<KeyValuePair<string,int>> IncludedQualities => jData.includedQualities;
+		[JsonProperty("Nodes")]
+		public HashSet<BaseNode> jsonNodes => jData.includedNodes;
+		[JsonProperty("NodeLinks")]
+		public HashSet<NodeLink> jsonNodeLinks => jData.includedLinks;
 
 		public NewNodeCollection InsertNodesFromJson(DataCache cache, JObject json, bool loadSolverValues) //cache is necessary since we will possibly be adding to mssing items/recipes
 		{

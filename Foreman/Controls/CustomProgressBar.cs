@@ -4,12 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Drawing;
+using System.ComponentModel;
 
 namespace Foreman
 {
 	class CustomProgressBar : ProgressBar
 	{
 		//Property to hold the custom text
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public string CustomText { get; set; }
 
 		public CustomProgressBar() : base()

@@ -1,12 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 
 namespace Foreman
 {
+	[Serializable]
+	[JsonObject(MemberSerialization.OptIn)]
 	public class ConsumerNode : BaseNode
 	{
         public enum Errors
@@ -33,7 +32,7 @@ namespace Foreman
 		public readonly ItemQualityPair ConsumedItem;
 
 		public override IEnumerable<ItemQualityPair> Inputs { get { yield return ConsumedItem; } }
-		public override IEnumerable<ItemQualityPair> Outputs { get { return new ItemQualityPair[0]; } }
+		public override IEnumerable<ItemQualityPair> Outputs { get { return Array.Empty<ItemQualityPair>(); } }
 
 		public ConsumerNode(ProductionGraph graph, int nodeID, ItemQualityPair item) : base(graph, nodeID)
 		{
@@ -79,16 +78,16 @@ namespace Foreman
 		internal override double inputRateFor(ItemQualityPair item) { return 1; }
 		internal override double outputRateFor(ItemQualityPair item) { throw new ArgumentException("Consumer should not have outputs!"); }
 
-		public override void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			base.GetObjectData(info, context);
+		[JsonProperty]
+		public NodeType NodeType => NodeType.Consumer;
+		[JsonProperty]
+		public string Item => ConsumedItem.Item.Name;
+		[JsonProperty]
+		public string BaseQuality => ConsumedItem.Quality.Name;
+		[JsonProperty]
+		public new double DesiredRate  => DesiredRatePerSec;
 
-			info.AddValue("NodeType", NodeType.Consumer);
-			info.AddValue("Item", ConsumedItem.Item.Name);
-			info.AddValue("BaseQuality", ConsumedItem.Quality.Name);
-			if (RateType == RateType.Manual)
-				info.AddValue("DesiredRate", DesiredRatePerSec);
-		}
+		public bool ShouldSerializeDesiredRate() => RateType == RateType.Manual;
 
 		public override string ToString() { return string.Format("Consumption node for: {0} ({1})", ConsumedItem.Item.Name, ConsumedItem.Quality.Name); }
 	}

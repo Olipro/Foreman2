@@ -1,31 +1,83 @@
-﻿using System;
+﻿using ProtoBuf;
+
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Foreman
 {
 	[Serializable]
-	public struct IconColorPair
-	{
-		public Bitmap Icon;
-		public Color Color;
+	[ProtoContract]
+	public class IconColorPair : IDisposable {
+		[ProtoMember(1)]
+		private byte[] iconBytes;
+		[ProtoMember(2)]
+		private int color;
+
+		private Bitmap iconCache;
+
+		public Bitmap Icon {
+			get {
+				if (iconCache != null)
+					return iconCache;
+				if (iconBytes == null)
+					return null;
+				using (var strm = new MemoryStream(iconBytes))
+					iconCache = new Bitmap(strm);
+				return iconCache;
+			}
+			set {
+				iconCache = value;
+				if (iconCache == null) {
+					iconBytes = null;
+					return;
+				}
+				using (var strm = new MemoryStream()) {
+					iconCache.Save(strm, ImageFormat.Png);
+					iconBytes = strm.ToArray();
+				}
+			}
+		}
+
+		public Color Color {
+			get {
+				return Color.FromArgb(color);
+			}
+			set {
+				color = value.ToArgb();
+			}
+		}
+
 		public IconColorPair(Bitmap icon, Color color)
 		{
 			this.Icon = icon;
 			this.Color = color;
 		}
+
+		private IconColorPair() : this(null, Color.White) {}
+
+		public void Dispose() {
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing) {
+			if (disposing) {
+				iconCache.Dispose();
+			}
+		}
 	}
 	[Serializable]
+	[ProtoContract]
 	public class IconBitmapCollection
 	{
+		[ProtoMember(1)]
 		public Dictionary<string, IconColorPair> Icons;
 		public IconBitmapCollection() { Icons = new Dictionary<string, IconColorPair>(); }
 	}
@@ -113,22 +165,20 @@ namespace Foreman
 				File.Delete(path);
 			using (Stream stream = File.Open(path, FileMode.Create, FileAccess.Write))
 			{
-				var binaryFormatter = new BinaryFormatter();
-				binaryFormatter.Serialize(stream, iCollection);
+				Serializer.Serialize(stream, iCollection);
 			}
 		}
 
 		public static async Task<Dictionary<string, IconColorPair>> LoadIconCache(string path, IProgress<KeyValuePair<int, string>> progress, int startingPercent, int endingPercent)
 		{
-			Dictionary<string, IconColorPair> iconCache = new Dictionary<string, IconColorPair>();
-			await Task.Run(() =>
+			return await Task.Run(() =>
 			{
+				Dictionary<string, IconColorPair> iconCache = new Dictionary<string, IconColorPair>();
 				try
 				{
 					using (Stream stream = File.Open(path, FileMode.Open))
 					{
-						var binaryFormatter = new BinaryFormatter();
-						IconBitmapCollection iCollection = (IconBitmapCollection)binaryFormatter.Deserialize(stream);
+						IconBitmapCollection iCollection = Serializer.Deserialize<IconBitmapCollection>(stream);
 
 						int totalCount = iCollection.Icons.Count();
 						int counter = 0;
@@ -144,8 +194,8 @@ namespace Foreman
 					iconCache.Clear();
 					MessageBox.Show("Icon cache was corrupted. All icons will be empty.\nRecommendation: delete preset and import new one?");
 				}
+				return iconCache;
 			});
-			return iconCache;
 		}
 	}
 }

@@ -17,6 +17,7 @@ namespace Foreman
 		private string comparedString;
 
 		[AmbientValue(typeof(Font), null)]
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public Font TextFont { get; set; }
 
 		public CustomToolTip()

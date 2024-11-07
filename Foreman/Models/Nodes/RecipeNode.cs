@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Xml.Schema;
+using Newtonsoft.Json;
 
 namespace Foreman
 {
+	[Serializable]
+	[JsonObject(MemberSerialization.OptIn)]
 	public class RecipeNode : BaseNode
 	{
 		public enum Errors
@@ -57,16 +58,21 @@ namespace Foreman
 
             TemeratureFluidBurnerInvalidLinks = 0b_0100_0000_0000_0000,
 		}
+
 		public Errors ErrorSet { get; private set; }
 		public Warnings WarningSet { get; private set; }
 
 		private readonly RecipeNodeController controller;
 		public override BaseNodeController Controller { get { return controller; } }
 
+		[JsonProperty]
 		public bool LowPriority { get; set; }
+
+		public bool ShouldSerializeLowPriority() => LowPriority;
 
 		public readonly RecipeQualityPair BaseRecipe;
 		private double neighbourCount;
+		[JsonProperty("Neighbours")]
 		public double NeighbourCount { get { return neighbourCount; } set { if (neighbourCount != value) { neighbourCount = value; ioUpdateRequired = true; UpdateState(); OnNodeValuesChanged(); } } }
 
 		private readonly DataCache RecipeOwner;
@@ -107,26 +113,32 @@ namespace Foreman
 		private BeaconQualityPair selectedBeacon;
 		public BeaconQualityPair SelectedBeacon { get { return selectedBeacon; } set { if (selectedBeacon != value) { selectedBeacon = value; ioUpdateRequired = true; UpdateState(); OnNodeValuesChanged(); } } }
 		private double beaconCount;
+		[JsonProperty]
 		public double BeaconCount { get { return beaconCount; } set { if (beaconCount != value) { beaconCount = value; ioUpdateRequired = true; UpdateState(); OnNodeValuesChanged(); } } }
 		private double beaconsPerAssembler;
+		[JsonProperty]
 		public double BeaconsPerAssembler { get { return beaconsPerAssembler; } set { if (beaconsPerAssembler != value) { beaconsPerAssembler = value; UpdateState(); OnNodeValuesChanged(); } } }
 		private double beaconsConst;
+		[JsonProperty]
 		public double BeaconsConst { get { return beaconsConst; } set { if (beaconsConst != value) { beaconsConst = value; UpdateState(); OnNodeValuesChanged(); } } }
 
+		[JsonProperty]
 		public IReadOnlyList<ModuleQualityPair> AssemblerModules { get { return assemblerModules; } }
+		[JsonProperty]
 		public IReadOnlyList<ModuleQualityPair> BeaconModules { get { return beaconModules; } }
 		private List<ModuleQualityPair> assemblerModules;
 		private List<ModuleQualityPair> beaconModules;
 
 		//for recipe nodes, the SetValue is 'number of assemblers/entities'
-        public override double ActualSetValue { get { return ActualRatePerSec * BaseRecipe.Recipe.Time / (SelectedAssembler.Assembler.GetSpeed(SelectedAssembler.Quality) * GetSpeedMultiplier()); } }
-        public override double DesiredSetValue { get; set; }
-        public override double MaxDesiredSetValue { get { return ProductionGraph.MaxFactories; } }
-        public override string SetValueDescription { get { return "# of Assemblers:"; } }
+		public override double ActualSetValue { get { return ActualRatePerSec * BaseRecipe.Recipe.Time / (SelectedAssembler.Assembler.GetSpeed(SelectedAssembler.Quality) * GetSpeedMultiplier()); } }
+		public override double DesiredSetValue { get; set; }
+		public override double MaxDesiredSetValue { get { return ProductionGraph.MaxFactories; } }
+		public override string SetValueDescription { get { return "# of Assemblers:"; } }
 
 		public override double DesiredRatePerSec { get { return DesiredSetValue * SelectedAssembler.Assembler.GetSpeed(SelectedAssembler.Quality) * GetSpeedMultiplier() / (BaseRecipe.Recipe.Time); } set { Trace.Fail("Desired rate set on a recipe node!"); } }
 
 		private double extraProductivityBonus;
+		[JsonProperty("ExtraProductivity")]
 		public double ExtraProductivityBonus { get { return extraProductivityBonus; } set { if (extraProductivityBonus != value) { extraProductivityBonus = value; ioUpdateRequired = true; UpdateState(); OnNodeValuesChanged(); } } }
 
 		public uint MaxQualitySteps { get { return maxQualitySteps; } set { if (maxQualitySteps != value) { maxQualitySteps = value; ioUpdateRequired = true; } } } //if quality bonus > 0 then we will take this many extra quality steps for products
@@ -137,13 +149,42 @@ namespace Foreman
 		private List<ItemQualityPair> inputList;
 
 		public override IEnumerable<ItemQualityPair> Outputs{ get { if (ioUpdateRequired) { UpdateInputsAndOutputs(); } return outputList; } }
-        private Dictionary<ItemQualityPair, double> outputSet;
-        private List<ItemQualityPair> outputList;
+		private Dictionary<ItemQualityPair, double> outputSet;
+		private List<ItemQualityPair> outputList;
 
 		public bool IsFuelPartOfRecipeInputs { get; private set; }
 		public bool IsFuelRemainsPartOfRecipeOutputs { get;private set; }
 
 		private bool ioUpdateRequired;
+
+		[JsonProperty]
+		public NodeType NodeType => NodeType.Recipe;
+		[JsonProperty]
+		public long RecipeID => BaseRecipe.Recipe.RecipeID;
+		[JsonProperty]
+		public string RecipeQuality => BaseRecipe.Quality.Name;
+		[JsonProperty]
+		public string Assembler => SelectedAssembler.Assembler.Name;	
+		[JsonProperty]
+		public string AssemblerQuality => SelectedAssembler.Quality.Name;
+		[JsonProperty("Fuel")]
+		public string jsonFuel => Fuel.Name;
+		[JsonProperty("Burnt")]
+		public string jsonBurnt => FuelRemains.Name;
+		[JsonProperty]
+		public string Beacon => SelectedBeacon.Beacon.Name;
+		[JsonProperty]
+		public string BeaconQuality => SelectedBeacon.Quality.Name;
+
+		public bool ShouldSerializeBeacon() => SelectedBeacon;
+		public bool ShouldSerializeBeaconQuality() => SelectedBeacon;
+		public bool ShouldSerializeBeaconModules() => SelectedBeacon;
+		public bool ShouldSerializeBeaconCount() => SelectedBeacon;
+		public bool ShouldSerializeBeaconsPerAssembler() => SelectedBeacon;
+		public bool ShouldSerializeBeaconsConst() => SelectedBeacon;
+
+		public bool ShouldSerializejsonFuel() => Fuel != null;
+		public bool ShouldSerializejsonBurnt() => FuelRemains != null;
 
         public RecipeNode(ProductionGraph graph, int nodeID, RecipeQualityPair recipe, Quality assemblerQuality) : base(graph, nodeID)
 		{
@@ -514,7 +555,6 @@ namespace Foreman
 		{
 			return BaseRecipe.Recipe.Time / (SelectedAssembler.Assembler.GetSpeed(SelectedAssembler.Quality) * GetSpeedMultiplier());
 		}
-
 		internal double GetMinOutputRatio()
 		{
 			double minValue = double.MaxValue;
@@ -522,43 +562,6 @@ namespace Foreman
 				minValue = Math.Min(minValue, outputRateFor(item));
 			return minValue;
 		}
-
-		//------------------------------------------------------------------------object save & string
-
-		public override void GetObjectData(SerializationInfo info, StreamingContext context)
-		{
-			base.GetObjectData(info, context);
-
-			info.AddValue("NodeType", NodeType.Recipe);
-			info.AddValue("RecipeID", BaseRecipe.Recipe.RecipeID);
-			info.AddValue("RecipeQuality", BaseRecipe.Quality.Name);
-			info.AddValue("Neighbours", NeighbourCount);
-			info.AddValue("ExtraProductivity", ExtraProductivityBonus);
-
-			if (LowPriority)
-				info.AddValue("LowPriority", 1);
-
-			//assembler can not be null!
-			info.AddValue("Assembler", SelectedAssembler.Assembler.Name);
-			info.AddValue("AssemblerQuality", SelectedAssembler.Quality.Name);
-			info.AddValue("AssemblerModules", AssemblerModules);
-			//fuel is assumed to always be of the 'default quality' - whatever this is for the current datacache
-			if (Fuel != null)
-				info.AddValue("Fuel", Fuel.Name);
-			if (FuelRemains != null)
-				info.AddValue("Burnt", FuelRemains.Name);
-
-			if (SelectedBeacon)
-			{
-				info.AddValue("Beacon", SelectedBeacon.Beacon.Name);
-				info.AddValue("BeaconQuality", SelectedBeacon.Quality.Name);
-				info.AddValue("BeaconModules", BeaconModules);
-				info.AddValue("BeaconCount", BeaconCount);
-				info.AddValue("BeaconsPerAssembler", BeaconsPerAssembler);
-				info.AddValue("BeaconsConst", BeaconsConst);
-			}
-		}
-
 		public override string ToString() { return string.Format("Recipe node for: {0} ({1})", BaseRecipe.Recipe.Name, BaseRecipe.Quality.Name); }
 	}
 
