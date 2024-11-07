@@ -47,10 +47,6 @@ namespace Foreman
 				scrolling = false;
 			}
 		}
-
-		[DllImport("user32.dll", CharSet = CharSet.Auto)]
-		private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wp, IntPtr lp);
-
 	}
 
 	class FFListView : ListView

@@ -7,6 +7,7 @@ using System.Runtime.Serialization;
 
 namespace Foreman
 {
+	[Serializable]
 	public class ConsumerNode : BaseNode
 	{
         public enum Errors

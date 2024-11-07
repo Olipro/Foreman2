@@ -17,6 +17,7 @@ namespace Foreman
             if (disposing && (components != null))
             {
                 components.Dispose();
+				GroupButtonToolTip.Dispose();
             }
             base.Dispose(disposing);
         }

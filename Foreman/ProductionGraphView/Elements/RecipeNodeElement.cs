@@ -310,5 +310,13 @@ namespace Foreman
 
 			return tooltips;
 		}
+
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				AssemblerElement.Dispose();
+				BeaconElement.Dispose();
+			}
+			base.Dispose(disposing);
+		}
 	}
 }

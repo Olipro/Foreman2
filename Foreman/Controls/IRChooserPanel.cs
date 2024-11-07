@@ -42,7 +42,7 @@ namespace Foreman
 		protected ProductionGraphViewer PGViewer;
 
 		protected abstract ToolTip IRButtonToolTip { get; }
-		private CustomToolTip GroupButtonToolTip;
+		private readonly CustomToolTip GroupButtonToolTip;
 
 		protected abstract List<List<KeyValuePair<DataObjectBase, Color>>> GetSubgroupList();
 		protected abstract void IRButton_MouseUp(object sender, MouseEventArgs e);
@@ -378,6 +378,7 @@ namespace Foreman
 			Properties.Settings.Default.IgnoreAssemblerStatus = IgnoreAssemblerCheckBox.Checked;
 			Properties.Settings.Default.RecipeNameOnlyFilter = RecipeNameOnlyFilterCheckBox.Checked;
 			Properties.Settings.Default.Save();
+			GroupButtonToolTip.Dispose();
 			PanelClosed?.Invoke(this, new PanelChooserCloseArgs(panelCloseReason));
 		}
 
@@ -550,15 +551,21 @@ namespace Foreman
 				Dispose();
 			}
 		}
+
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				iToolTip.Dispose();
+			}
+			base.Dispose(disposing);
+		}
 	}
 
-	public class RecipeChooserPanel : IRChooserPanel
-	{
+	public class RecipeChooserPanel : IRChooserPanel {
 		public event EventHandler<RecipeRequestArgs> RecipeRequested;
 
 		protected ItemQualityPair KeyItem;
-        protected bool isDefaultQuality;
-        protected fRange KeyItemTempRange;
+		protected bool isDefaultQuality;
+		protected fRange KeyItemTempRange;
 		protected DataCache DCache;
 
 		private ToolTip rToolTip = new RecipeToolTip();
@@ -566,35 +573,31 @@ namespace Foreman
 
 		private List<Quality> qualitySelectorIndexSet;
 
-		public RecipeChooserPanel(ProductionGraphViewer parent, Point originPoint, ItemQualityPair item, fRange tempRange, NewNodeType nodeType) : base(parent, originPoint)
-		{
+		public RecipeChooserPanel(ProductionGraphViewer parent, Point originPoint, ItemQualityPair item, fRange tempRange, NewNodeType nodeType) : base(parent, originPoint) {
 			DCache = parent.DCache;
 			qualitySelectorIndexSet = new List<Quality>();
 
-            if (!item)
-            {
-                QualitySelectorTable.Visible = true;
-				foreach (Quality quality in parent.DCache.AvailableQualities.Where(q => q.Enabled))
-				{
+			if (!item) {
+				QualitySelectorTable.Visible = true;
+				foreach (Quality quality in parent.DCache.AvailableQualities.Where(q => q.Enabled)) {
 					QualitySelector.Items.Add(quality.FriendlyName);
-                    qualitySelectorIndexSet.Add(quality);
+					qualitySelectorIndexSet.Add(quality);
 
-                }
+				}
 
-                if (QualitySelector.Items.Count == 1)
+				if (QualitySelector.Items.Count == 1)
 					QualitySelector.Enabled = false;
-            } else
-            {
-                QualitySelector.Items.Add(item.Quality.FriendlyName);
+			} else {
+				QualitySelector.Items.Add(item.Quality.FriendlyName);
 				qualitySelectorIndexSet.Add(item.Quality);
-                QualitySelector.Enabled = false;
-            }
-            QualitySelector.SelectedIndex = 0;
+				QualitySelector.Enabled = false;
+			}
+			QualitySelector.SelectedIndex = 0;
 
-            bool asIngredient = (nodeType == NewNodeType.Consumer || nodeType == NewNodeType.Disconnected);
+			bool asIngredient = (nodeType == NewNodeType.Consumer || nodeType == NewNodeType.Disconnected);
 			bool asProduct = (nodeType == NewNodeType.Supplier || nodeType == NewNodeType.Disconnected);
 
-            AsIngredientCheckBox.Checked = asIngredient;
+			AsIngredientCheckBox.Checked = asIngredient;
 			AsProductCheckBox.Checked = asProduct;
 			ShowHiddenCheckBox.Text = "Show Disabled";
 
@@ -616,15 +619,14 @@ namespace Foreman
 			isDefaultQuality = !KeyItem || KeyItem.Quality == DCache.DefaultQuality;
 
 			RecipeNameOnlyFilterCheckBox.Visible = true;
-			if (KeyItem)
-			{
+			if (KeyItem) {
 				ItemIconPanel.Visible = true;
 				ItemIconPanel.BackgroundImage = KeyItem.Icon;
 				OtherNodeOptionsATable.Visible = true;
 				AddConsumerButton.Visible = asIngredient;
 				AddSupplyButton.Visible = asProduct;
 
-                OtherNodeOptionsBTable.Visible = true;
+				OtherNodeOptionsBTable.Visible = true;
 				AddSpoilButton.Visible = asIngredient && KeyItem.Item.SpoilResult != null;
 				AddUnspoilButton.Visible = asProduct && KeyItem.Item.SpoilOrigins.Count > 0;
 				AddPlantButton.Visible = asIngredient && KeyItem.Item.PlantResult != null;
@@ -632,7 +634,7 @@ namespace Foreman
 				int totalVisible = (AddSpoilButton.Visible ? 1 : 0) + (AddUnspoilButton.Visible ? 1 : 0) + (AddPlantButton.Visible ? 1 : 0) + (AddUnplantButton.Visible ? 1 : 0);
 				OtherNodeOptionsBTable.Visible = totalVisible > 0;
 
-				bool hasConsumptionRecipes = Properties.Settings.Default.ShowUnavailable? KeyItem.Item.ConsumptionRecipes.Count > 0 : KeyItem.Item.ConsumptionRecipes.Count(r => r.Available) > 0;
+				bool hasConsumptionRecipes = Properties.Settings.Default.ShowUnavailable ? KeyItem.Item.ConsumptionRecipes.Count > 0 : KeyItem.Item.ConsumptionRecipes.Count(r => r.Available) > 0;
 				bool hasFuelConsumptionRecipes = isDefaultQuality && (KeyItem.Item.FuelsEntities.Any(a => (a is Assembler assembler) && assembler.Enabled && assembler.Recipes.Any(r => r.Enabled)));
 				bool hasProductionRecipes = Properties.Settings.Default.ShowUnavailable ? KeyItem.Item.ProductionRecipes.Count > 0 : KeyItem.Item.ProductionRecipes.Count(r => r.Available) > 0;
 				bool hasFuelProductionRecipes = isDefaultQuality && (KeyItem.Item.FuelOrigin != null && KeyItem.Item.FuelOrigin.FuelsEntities.Any(a => (a is Assembler assembler) && assembler.Enabled && assembler.Recipes.Any(r => r.Enabled)));
@@ -648,30 +650,22 @@ namespace Foreman
 					ShowHiddenCheckBox.Visible = false;
 					IgnoreAssemblerCheckBox.Visible = false;
 					ItemIconPanel.Location = new Point(4, 4);
-				}
-				else if (asIngredient && asProduct)
-				{
+				} else if (asIngredient && asProduct) {
 					AsFuelCheckBox.Visible = (asIngredient && hasFuelConsumptionRecipes) || (asProduct && hasFuelProductionRecipes);
 					AsIngredientCheckBox.Visible = true;
 					AsProductCheckBox.Visible = true;
-				}
-				else if (asIngredient)
-				{
+				} else if (asIngredient) {
 					AsFuelCheckBox.Visible = (asIngredient && KeyItem.Item.FuelsEntities.Count > 0);
 				}
+			} else {
+				OtherNodeOptionsATable.Visible = false;
+				OtherNodeOptionsBTable.Visible = false;
 			}
-			else
-			{
-                OtherNodeOptionsATable.Visible = false;
-                OtherNodeOptionsBTable.Visible = false;
-            }
 		}
 
-		protected override List<Group> GetSortedGroups()
-		{
+		protected override List<Group> GetSortedGroups() {
 			List<Group> groups = new List<Group>();
-			foreach (Group group in ShowUnavailable ? PGViewer.DCache.Groups.Values : PGViewer.DCache.AvailableGroups)
-			{
+			foreach (Group group in ShowUnavailable ? PGViewer.DCache.Groups.Values : PGViewer.DCache.AvailableGroups) {
 				int recipeCount = 0;
 				foreach (Subgroup sgroup in group.Subgroups)
 					recipeCount += ShowUnavailable ? sgroup.Recipes.Count : sgroup.Recipes.Count(r => r.Available);
@@ -682,8 +676,7 @@ namespace Foreman
 			return groups;
 		}
 
-		protected override List<List<KeyValuePair<DataObjectBase, Color>>> GetSubgroupList()
-		{
+		protected override List<List<KeyValuePair<DataObjectBase, Color>>> GetSubgroupList() {
 			//step 1: calculate the visible recipes for each group (those that pass filter & hidden status)
 			string filterString = FilterTextBox.Text.ToLower();
 			bool ignoreAssemblerStatus = IgnoreAssemblerCheckBox.Checked;
@@ -696,12 +689,10 @@ namespace Foreman
 
 			Dictionary<Group, List<List<KeyValuePair<DataObjectBase, Color>>>> filteredRecipes = new Dictionary<Group, List<List<KeyValuePair<DataObjectBase, Color>>>>();
 			Dictionary<Group, int> filteredRecipeCount = new Dictionary<Group, int>();
-			foreach (Group group in SortedGroups)
-			{
+			foreach (Group group in SortedGroups) {
 				int recipeCounter = 0;
 				List<List<KeyValuePair<DataObjectBase, Color>>> sgList = new List<List<KeyValuePair<DataObjectBase, Color>>>();
-				foreach (Subgroup sgroup in group.Subgroups)
-				{
+				foreach (Subgroup sgroup in group.Subgroups) {
 					List<KeyValuePair<DataObjectBase, Color>> recipeList = new List<KeyValuePair<DataObjectBase, Color>>();
 					//filter recipes... I tried to break up the filter into several parts to prevent this from being one GIANT '.where' call
 					foreach (Recipe recipe in sgroup.Recipes.Where(r => ignoreItem ||
@@ -711,14 +702,12 @@ namespace Foreman
 						(includeSuppliers && includeFuel && KeyItem.Item.FuelOrigin != null && r.Assemblers.Any(a => a.Fuels.Contains(KeyItem.Item.FuelOrigin) && (a.Enabled || ignoreAssemblerStatus))))) //producers of item (as fuel remains) -> check assembler status here as well for same reason
 					{
 						//quick hidden / enabled / available assembler check (done prior to name check for speed)
-						if ((recipe.Enabled || showHidden) && (recipe.Assemblers.Any(a => a.Enabled) || ignoreAssemblerStatus) && (recipe.Available || ShowUnavailable))
-						{
+						if ((recipe.Enabled || showHidden) && (recipe.Assemblers.Any(a => a.Enabled) || ignoreAssemblerStatus) && (recipe.Available || ShowUnavailable)) {
 							//name check - have to check recipe name along with all ingredients and products (both friendly name and base name) - if selected
 							if (recipe.LFriendlyName.Contains(filterString) ||
 								recipe.Name.IndexOf(filterString, StringComparison.OrdinalIgnoreCase) != -1 || (checkRecipeIPs && (
 								recipe.IngredientList.Any(i => i.LFriendlyName.Contains(filterString) || i.Name.IndexOf(filterString, StringComparison.OrdinalIgnoreCase) != -1) ||
-								recipe.ProductList.Any(i => i.LFriendlyName.Contains(filterString) || i.Name.IndexOf(filterString, StringComparison.OrdinalIgnoreCase) != -1))))
-							{
+								recipe.ProductList.Any(i => i.LFriendlyName.Contains(filterString) || i.Name.IndexOf(filterString, StringComparison.OrdinalIgnoreCase) != -1)))) {
 								//holy... so - we finally finished all the checks, eh? Well, throw it on the pile of recipes to show then.
 								Color bgColor = !recipe.Enabled ? IRButtonHiddenColor :
 									(!recipe.Available || !recipe.Assemblers.Any(a => a.Available)) ? IRButtonUnavailableColor :
@@ -737,8 +726,7 @@ namespace Foreman
 
 			//step 2: select working group (currently selected group, or if it has 0 recipes then the first group with >0 recipes to the left, then the first group with >0 recipes to the right, then itself)
 			Group alternateGroup = null;
-			if (filteredRecipeCount[SelectedGroup] == 0)
-			{
+			if (filteredRecipeCount[SelectedGroup] == 0) {
 				int selectedGroupIndex = 0;
 				for (int i = 0; i < SortedGroups.Count; i++)
 					if (SortedGroups[i] == SelectedGroup)
@@ -759,121 +747,107 @@ namespace Foreman
 			return filteredRecipes[SelectedGroup];
 		}
 
-		protected override void IRButton_MouseUp(object sender, MouseEventArgs e)
-		{
+		protected override void IRButton_MouseUp(object sender, MouseEventArgs e) {
 			if (e.Button == MouseButtons.Left) //select recipe
 			{
 				Recipe sRecipe = (Recipe)((Button)sender).Tag;
-                RecipeRequested?.Invoke(this, new RecipeRequestArgs(new RecipeQualityPair((Recipe)((Button)sender).Tag, qualitySelectorIndexSet[QualitySelector.SelectedIndex])));
+				RecipeRequested?.Invoke(this, new RecipeRequestArgs(new RecipeQualityPair((Recipe)((Button)sender).Tag, qualitySelectorIndexSet[QualitySelector.SelectedIndex])));
 
-				if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift)
-				{
-                    panelCloseReason = ChooserPanelCloseReason.RecipeSelected;
-                    Dispose();
+				if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift) {
+					panelCloseReason = ChooserPanelCloseReason.RecipeSelected;
+					Dispose();
 				}
-			}
-			else if (e.Button == MouseButtons.Right) //flip hidden status of recipe
-			{
+			} else if (e.Button == MouseButtons.Right) //flip hidden status of recipe
+			  {
 				Recipe selectedRecipe = (sender as NFButton).Tag as Recipe;
 				selectedRecipe.Enabled = !selectedRecipe.Enabled;
 				UpdateIRButtons();
 			}
 		}
 
-		private void AddSupplyButton_Click(object sender, EventArgs e)
-		{
+		private void AddSupplyButton_Click(object sender, EventArgs e) {
 			RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Supplier));
 
-            if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift)
-            {
-                panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
-                Dispose();
-            }
-        }
+			if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift) {
+				panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
+				Dispose();
+			}
+		}
 
-		private void AddConsumerButton_Click(object sender, EventArgs e)
-		{
+		private void AddConsumerButton_Click(object sender, EventArgs e) {
 			RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Consumer));
 
-            if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift)
-            {
-                panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
-                Dispose();
-            }
-        }
+			if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift) {
+				panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
+				Dispose();
+			}
+		}
 
-		private void AddPassthroughButton_Click(object sender, EventArgs e)
-		{
+		private void AddPassthroughButton_Click(object sender, EventArgs e) {
 			RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Passthrough));
 
-            if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift)
-            {
-                panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
-                Dispose();
-            }
-        }
+			if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift) {
+				panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
+				Dispose();
+			}
+		}
 
-        private void AddSpoilButton_Click(object sender, EventArgs e)
-        {
-            RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Spoil, NodeDirection.Up));
+		private void AddSpoilButton_Click(object sender, EventArgs e) {
+			RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Spoil, NodeDirection.Up));
 
-            if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift)
-            {
-                panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
-                Dispose();
-            }
-        }
+			if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift) {
+				panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
+				Dispose();
+			}
+		}
 
-        private void AddUnSpoilButton_Click(object sender, EventArgs e)
-        {
-			if(KeyItem.Item.SpoilOrigins.Count < 2)
-			{
-                panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
+		private void AddUnSpoilButton_Click(object sender, EventArgs e) {
+			if (KeyItem.Item.SpoilOrigins.Count < 2) {
+				panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
 				RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Spoil, NodeDirection.Down));
 				Dispose(true);
-            }
-			else
-			{
+			} else {
 				panelCloseReason = ChooserPanelCloseReason.RequiresItemSelection;
-                RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Spoil, NodeDirection.Down));
+				RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Spoil, NodeDirection.Down));
 				//Dispose(); //since close reason is 'requires item selection, this will panel will auto close on 'recipe requested' invoke
-            }
-        }
+			}
+		}
 
-        private void AddPlantButton_Click(object sender, EventArgs e)
-        {
-            RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Plant, NodeDirection.Up));
+		private void AddPlantButton_Click(object sender, EventArgs e) {
+			RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Plant, NodeDirection.Up));
 
-            if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift)
-            {
-                panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
-                Dispose();
-            }
-        }
+			if ((Control.ModifierKeys & Keys.Shift) != Keys.Shift) {
+				panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
+				Dispose();
+			}
+		}
 
-        private void AddUnPlantButton_Click(object sender, EventArgs e)
-        {
-            if (KeyItem.Item.PlantOrigins.Count < 2)
-            {
-                panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
-                RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Plant, NodeDirection.Down));
-                Dispose(true);
-            } else
-            {
-                panelCloseReason = ChooserPanelCloseReason.RequiresItemSelection;
-                RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Plant, NodeDirection.Down));
-                //Dispose(); //since close reason is 'requires item selection, this will panel will auto close on 'recipe requested' invoke
-            }
-        }
+		private void AddUnPlantButton_Click(object sender, EventArgs e) {
+			if (KeyItem.Item.PlantOrigins.Count < 2) {
+				panelCloseReason = ChooserPanelCloseReason.AltNodeSelected;
+				RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Plant, NodeDirection.Down));
+				Dispose(true);
+			} else {
+				panelCloseReason = ChooserPanelCloseReason.RequiresItemSelection;
+				RecipeRequested?.Invoke(this, new RecipeRequestArgs(NodeType.Plant, NodeDirection.Down));
+				//Dispose(); //since close reason is 'requires item selection, this will panel will auto close on 'recipe requested' invoke
+			}
+		}
 
-        internal override void IRButton_MouseHover(object sender, EventArgs e)
-		{
+		internal override void IRButton_MouseHover(object sender, EventArgs e) {
 			Control control = (Control)sender;
 
 			int yoffset = -control.Location.Y + 16 + Math.Max(-100, Math.Min(0, 348 - RecipeToolTip.GetRecipeToolTipHeight((Recipe)((Button)sender).Tag)));
 
 			(IRButtonToolTip as RecipeToolTip).SetRecipe((Recipe)((Button)sender).Tag);
 			(IRButtonToolTip as RecipeToolTip).Show(control, new Point(control.Width, yoffset));
+		}
+
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				rToolTip.Dispose();
+			}
+			base.Dispose(disposing);
 		}
 	}
 

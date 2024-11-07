@@ -120,17 +120,24 @@ namespace Foreman
 		public virtual void MouseUp(Point graph_point, MouseButtons button, bool wasDragged) { }
 		public virtual void Dragged(Point graph_point) { }
 
-		public virtual void Dispose()
+		public void Dispose() {
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
 		{
-			foreach (GraphElement element in SubElements.ToArray())
-				element.Dispose();
-			SubElements.Clear();
-			if (myParent != null)
-				myParent.SubElements.Remove(this);
+			if (disposing) {
+				foreach (GraphElement element in SubElements.ToArray())
+					element.Dispose();
+				SubElements.Clear();
+				if (myParent != null)
+					myParent.SubElements.Remove(this);
 
-			RightClickMenu.Dispose();
+				RightClickMenu.Dispose();
 
-			graphViewer.Invalidate();
+				graphViewer.Invalidate();
+			}
 		}
 
 		internal string BuildingQuantityToText(double quantity)

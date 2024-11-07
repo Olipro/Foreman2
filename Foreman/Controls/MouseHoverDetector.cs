@@ -14,7 +14,7 @@ namespace Foreman
 	//  - minimum distance moved before ending check
 	//  - switch to non-static design (to allow for better control checks
 	//  - optimization of hover calls (only calls the control that was last moused over, not a all-check of all controls)
-	public class MouseHoverDetector
+	public partial class MouseHoverDetector : IDisposable
 	{
 		private Timer timer;
 		private Dictionary<Control, Info> items;
@@ -129,7 +129,14 @@ namespace Foreman
 
 		public void Dispose()
 		{
-			timer.Dispose();
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing) {
+			if (disposing) {
+				timer.Dispose();
+			}
 		}
 	}
 }

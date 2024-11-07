@@ -7,6 +7,7 @@ using System.Runtime.Serialization;
 
 namespace Foreman
 {
+	[Serializable]
 	public class PlantNode : BaseNode
 	{
         public enum Errors
