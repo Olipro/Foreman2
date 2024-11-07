@@ -276,6 +276,7 @@ namespace Foreman
 
 					JsonSerializer serialiser = JsonSerializer.Create();
 					serialiser.Formatting = Formatting.None;
+					serialiser.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
 					serialiser.Serialize(writer, new NodeCopyOptions(DisplayedNode as ReadOnlyRecipeNode));
 
 					Clipboard.SetText(stringBuilder.ToString());

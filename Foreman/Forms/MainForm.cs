@@ -183,6 +183,7 @@ namespace Foreman
 		{
 			var serialiser = JsonSerializer.Create();
 			serialiser.Formatting = Formatting.Indented;
+			serialiser.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
 			var writer = new JsonTextWriter(new StreamWriter(path));
 			try
 			{
@@ -323,6 +324,7 @@ namespace Foreman
 			JsonSerializer serialiser = JsonSerializer.Create();
 			serialiser.Formatting = Formatting.Indented;
 			GraphViewer.Graph.SerializeNodeIdSet = null; //we want to save everything.
+			serialiser.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
 			serialiser.Serialize(writer, GraphViewer);
 
 			if (File.ReadAllText(savefilePath) != stringBuilder.ToString())
