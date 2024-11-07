@@ -444,6 +444,7 @@ namespace Foreman
 
 						JsonSerializer serialiser = JsonSerializer.Create();
 						serialiser.Formatting = Formatting.None;
+						serialiser.ReferenceLoopHandling = ReferenceLoopHandling.Serialize;
 						serialiser.Serialize(writer, new Tuple<bool, string>(DisplayedNode.KeyNode, DisplayedNode.KeyNodeTitle));
 
 						Clipboard.SetText(stringBuilder.ToString());

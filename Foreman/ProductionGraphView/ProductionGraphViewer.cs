@@ -85,7 +85,7 @@ namespace Foreman
 		private HashSet<BaseNodeElement> selectedNodes; //main list of selected nodes
 		private HashSet<BaseNodeElement> currentSelectionNodes; //list of nodes currently under the selection zone (which can be added/removed/replace the full list)
 
-		private ContextMenu rightClickMenu = new ContextMenu();
+		private ContextMenuStrip rightClickMenu = new();
 
 		public ProductionGraphViewer()
 		{
@@ -814,17 +814,17 @@ namespace Foreman
 						Point screenPoint = new Point(e.Location.X - 150, 15);
 						screenPoint.X = Math.Max(15, Math.Min(Width - 650, screenPoint.X)); //want to position the recipe selector such that it is well visible.
 
-						rightClickMenu.MenuItems.Clear();
-						rightClickMenu.MenuItems.Add(new MenuItem("Add Item",
+						rightClickMenu.Items.Clear();
+						rightClickMenu.Items.Add("Add Item", null,
 							new EventHandler((o, ee) =>
 							{
 								AddItem(screenPoint, ScreenToGraph(e.Location));
-							})));
-						rightClickMenu.MenuItems.Add(new MenuItem("Add Recipe",
+							}));
+						rightClickMenu.Items.Add("Add Recipe", null,
 							new EventHandler((o, ee) =>
 							{
 								AddNewNode(screenPoint, new ItemQualityPair("adding disconnected recipe"), ScreenToGraph(e.Location), NewNodeType.Disconnected);
-							})));
+							}));
 						rightClickMenu.Show(this, e.Location);
 					}
 					else if(currentDragOperation != DragOperation.Selection)
@@ -998,6 +998,7 @@ namespace Foreman
 
 					JsonSerializer serialiser = JsonSerializer.Create();
 					serialiser.Formatting = Formatting.None;
+					serialiser.ReferenceLoopHandling = ReferenceLoopHandling.Serialize;
 					serialiser.Serialize(writer, Graph);
 
 					Graph.SerializeNodeIdSet.Clear();
