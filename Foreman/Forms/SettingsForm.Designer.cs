@@ -16,6 +16,7 @@
             if (disposing && (components != null))
             {
                 components.Dispose();
+				mhDetector.Dispose();
             }
             base.Dispose(disposing);
         }

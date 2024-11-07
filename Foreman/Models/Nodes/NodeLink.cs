@@ -42,7 +42,7 @@ namespace Foreman
 			info.AddValue("Quality", Item.Quality.Name);
 		}
 
-		public override string ToString() { return string.Format("NodeLink for {0} ({1}) connecting {1} -> {2}", Item.Item.Name, Item.Quality.Name, SupplierNode.NodeID, ConsumerNode.NodeID); }
+		public override string ToString() => string.Format("NodeLink for {0} ({1}) connecting {2} -> {3}", Item.Item.Name, Item.Quality.Name, SupplierNode.NodeID, ConsumerNode.NodeID);
 	}
 
 	public class ReadOnlyNodeLink

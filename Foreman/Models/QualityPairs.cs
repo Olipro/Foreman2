@@ -34,7 +34,7 @@ namespace Foreman
         public override int GetHashCode() => Item.GetHashCode() + Quality.GetHashCode();
         public static bool operator ==(ItemQualityPair lhs, ItemQualityPair rhs) => lhs.Equals(rhs);
         public static bool operator !=(ItemQualityPair lhs, ItemQualityPair rhs) => !(lhs == rhs);
-        public static implicit operator bool(ItemQualityPair bp) => bp != null && bp.Item != null && bp.Quality != null;
+        public static implicit operator bool(ItemQualityPair bp) => bp.Item != null && bp.Quality != null;
         public override string ToString() { return Item.ToString() + " (" + Quality.ToString() + ")"; }
 
         public string FriendlyName
@@ -77,7 +77,7 @@ namespace Foreman
         public override int GetHashCode() => Module.GetHashCode() + Quality.GetHashCode();
         public static bool operator ==(ModuleQualityPair lhs, ModuleQualityPair rhs) => lhs.Equals(rhs);
         public static bool operator !=(ModuleQualityPair lhs, ModuleQualityPair rhs) => !(lhs == rhs);
-        public static implicit operator bool(ModuleQualityPair bp) => bp != null && bp.Module != null && bp.Quality != null;
+        public static implicit operator bool(ModuleQualityPair bp) => bp.Module != null && bp.Quality != null;
         public override string ToString() { return Module.ToString() + " (" + Quality.ToString() + ")"; }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -126,7 +126,7 @@ namespace Foreman
         public override int GetHashCode() => Assembler.GetHashCode() + Quality.GetHashCode();
         public static bool operator ==(AssemblerQualityPair lhs, AssemblerQualityPair rhs) => lhs.Equals(rhs);
         public static bool operator !=(AssemblerQualityPair lhs, AssemblerQualityPair rhs) => !(lhs == rhs);
-        public static implicit operator bool(AssemblerQualityPair bp) => bp != null && bp.Assembler != null && bp.Quality != null;
+        public static implicit operator bool(AssemblerQualityPair bp) => bp.Assembler != null && bp.Quality != null;
         public override string ToString() { return Assembler.ToString() + " (" + Quality.ToString() + ")"; }
 
         public string FriendlyName
@@ -175,7 +175,7 @@ namespace Foreman
         public override int GetHashCode() => Beacon.GetHashCode() + Quality.GetHashCode();
         public static bool operator ==(BeaconQualityPair lhs, BeaconQualityPair rhs) => lhs.Equals(rhs);
         public static bool operator !=(BeaconQualityPair lhs, BeaconQualityPair rhs) => !(lhs == rhs);
-        public static implicit operator bool(BeaconQualityPair bp) => bp != null && bp.Beacon != null && bp.Quality != null;
+        public static implicit operator bool(BeaconQualityPair bp) => bp.Beacon != null && bp.Quality != null;
         public override string ToString() { return Beacon.ToString() + " (" + Quality.ToString() + ")"; }
 
         public string FriendlyName
@@ -224,7 +224,7 @@ namespace Foreman
         public override int GetHashCode() => Recipe.GetHashCode() + Quality.GetHashCode();
         public static bool operator ==(RecipeQualityPair lhs, RecipeQualityPair rhs) => lhs.Equals(rhs);
         public static bool operator !=(RecipeQualityPair lhs, RecipeQualityPair rhs) => !(lhs == rhs);
-        public static implicit operator bool(RecipeQualityPair bp) => bp != null && bp.Recipe != null && bp.Quality != null;
+        public static implicit operator bool(RecipeQualityPair bp) => bp.Recipe != null && bp.Quality != null;
         public override string ToString() { return Recipe.ToString() + " (" + Quality.ToString() + ")"; }
 
         public string FriendlyName

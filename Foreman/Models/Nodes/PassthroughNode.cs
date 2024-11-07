@@ -5,6 +5,7 @@ using System.Runtime.Serialization;
 
 namespace Foreman
 {
+	[Serializable]
 	public class PassthroughNode : BaseNode
 	{
         public enum Errors

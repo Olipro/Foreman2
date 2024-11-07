@@ -532,5 +532,12 @@ namespace Foreman
 				}
 			}
 		}
+
+		protected override void Dispose(bool disposing) {
+			if (disposing) {
+				errorNotice.Dispose();
+			}
+			base.Dispose(disposing);
+		}
 	}
 }

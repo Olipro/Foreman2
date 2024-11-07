@@ -5,6 +5,7 @@ using System.Runtime.Serialization;
 
 namespace Foreman
 {
+	[Serializable]
 	public class SupplierNode : BaseNode
 	{
         public enum Errors

@@ -29,7 +29,7 @@ namespace Foreman
 		public Action<Graphics, Point> CustomDraw;
 	}
 
-	public class FloatingTooltipControl : IDisposable
+	public partial class FloatingTooltipControl : IDisposable
 	{
 		public Control Control { get; private set; }
 		public Direction Direction { get; private set; }
@@ -53,13 +53,19 @@ namespace Foreman
 			control.Focus();
 		}
 
-		public void Dispose()
+		public void Dispose() {
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
 		{
-			Control.Dispose();
-			GraphViewer.ToolTipRenderer.RemoveToolTip(this);
-			if (Closing != null)
-			{
-				Closing.Invoke(this, null);
+			if (disposing) {
+				Control.Dispose();
+				GraphViewer.ToolTipRenderer.RemoveToolTip(this);
+				if (Closing != null) {
+					Closing.Invoke(this, null);
+				}
 			}
 		}
 	}

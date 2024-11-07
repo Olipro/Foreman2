@@ -7,6 +7,7 @@ using System.Xml.Schema;
 
 namespace Foreman
 {
+	[Serializable]
 	public class RecipeNode : BaseNode
 	{
 		public enum Errors

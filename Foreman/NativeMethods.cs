@@ -27,6 +27,8 @@ namespace Foreman
 			public int cColumns;
 			public IntPtr puColumns;
 		};
+		[DllImport("user32.dll", CharSet = CharSet.Auto)]
+		private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wp, IntPtr lp);
 
 		[DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet.Auto)]
 		public static extern IntPtr SendMessageLVItem(IntPtr hWnd, int msg, int wParam, ref LVITEM lvi);
