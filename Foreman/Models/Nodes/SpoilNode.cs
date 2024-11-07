@@ -6,6 +6,7 @@ using System.Runtime.Serialization;
 
 namespace Foreman
 {
+	[Serializable]
 	public class SpoilNode : BaseNode
 	{
         public enum Errors
