@@ -1,19 +1,17 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Foreman.DataCache;
+
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Threading;
 using System.Windows.Forms;
 
-namespace Foreman
-{
+namespace Foreman {
 	public partial class DataLoadForm : Form
 	{
 		private int currentPercent;
 		private string currentText;
 
-		private Preset selectedPreset;
-		private DataCache createdDataCache;
+		private readonly Preset selectedPreset;
+		private DCache createdDataCache = DCache.defaultDCache;
 
 		public DataLoadForm(Preset preset)
 		{
@@ -25,7 +23,7 @@ namespace Foreman
 			InitializeComponent();
 		}
 
-		private async void ProgressForm_Load(object sender, EventArgs e)
+		private async void ProgressForm_Load(object? sender, EventArgs e)
 		{
 #if DEBUG
 			DateTime startTime = DateTime.Now;
@@ -45,7 +43,7 @@ namespace Foreman
 				}
 			}) as IProgress<KeyValuePair<int, string>>;
 
-			createdDataCache = new DataCache(Properties.Settings.Default.UseRecipeBWfilters);
+			createdDataCache = new DCache(Properties.Settings.Default.UseRecipeBWfilters);
 			try
 			{ 
 				await createdDataCache.LoadAllData(selectedPreset, progress);
@@ -53,7 +51,7 @@ namespace Foreman
 			}
 			catch
 			{
-				createdDataCache = new DataCache(true); //blank data cache in case of error.
+				createdDataCache = new DCache(true); //blank data cache in case of error.
 				DialogResult = DialogResult.Abort;
 			}
 			Close();
@@ -65,7 +63,7 @@ namespace Foreman
 #endif
 		}
 
-		public DataCache GetDataCache()
+		public DCache GetDataCache()
 		{
 			return createdDataCache;
 		}

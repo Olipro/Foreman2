@@ -6,7 +6,7 @@ namespace Foreman
 	//http://procbits.com/2010/08/25/benchmarking-c-apps-algorithms
 	public static class BenchmarkTimer
 	{
-		private static Stack<BenchmarkData> _startStack = new Stack<BenchmarkData>();
+		private static readonly Stack<BenchmarkData> _startStack = new();
 
 		public static void Start()
 		{

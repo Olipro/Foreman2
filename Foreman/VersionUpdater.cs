@@ -1,110 +1,111 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Foreman.DataCache;
+using Foreman.DataCache.DataTypes;
+using Foreman.Models;
+
+using Newtonsoft.Json.Linq;
+
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Foreman
-{
+namespace Foreman {
 	public static class VersionUpdater
 	{
 		public const int CurrentVersion = 7;
+		private static readonly string[] NoneAssembler = ["###NONE-ASSEMBLER###"];
 
 		//at some point we need to come back here and actuall fill in the version updater from the base foreman to the current version.
 
 
-		public static JObject UpdateSave(JObject original, DataCache cache)
+		public static JObject UpdateSave(JObject original, DCache cache)
 		{
-			if (original["Version"] == null || original["Object"] == null || (string)original["Object"] != "ProductionGraphViewer")
+			if (original["Version"] is null || original["Object"]?.Value<string>() is not string obj || obj != "ProductionGraphViewer")
 			{
 				if (original["Nodes"] != null && original["NodeLinks"] != null && original["ElementLocations"] != null)
 				{
 					//this is most likely the 'original' foreman graph. At the moment there isnt a conversion in place to bring it up to current standard (Feature will be added later)
-					JObject updated = new JObject();
-					updated["Version"] = 2;
-					updated["Object"] = "ProductionGraphViewer";
+					JObject updated = new() {
+						["Version"] = 2,
+						["Object"] = "ProductionGraphViewer",
 
-					updated["SavedPresetName"] = cache.PresetName; //we will import into the currently selected preset. Any failures are handled as missings.
-					updated["IncludedMods"] = new JArray(original["EnabledMods"].Select(t => (string)t + "|0").ToList());
+						["SavedPresetName"] = cache.PresetName, //we will import into the currently selected preset. Any failures are handled as missings.
+						["IncludedMods"] = new JArray(original["EnabledMods"]?.Select(t => t.Value<string>()).OfType<string>().Select(t => t + "|0").ToList() ?? []),
 
-					updated["Unit"] = original["Unit"]; //original is per sec then per min, which maps nicely to our new units 
-					updated["ViewOffset"] = string.Format("{0}, {1}", 0, 0);
-					updated["ViewScale"] = 1;
+						["Unit"] = original["Unit"], //original is per sec then per min, which maps nicely to our new units 
+						["ViewOffset"] = string.Format("{0}, {1}", 0, 0),
+						["ViewScale"] = 1,
 
-					updated["ExtraProdForNonMiners"] = false;
-					updated["AssemblerSelectorStyle"] = (int)AssemblerSelector.Style.Best;
-					updated["ModuleSelectorStyle"] = (int)ModuleSelector.Style.Productivity;
-					updated["FuelPriorityList"] = new JArray();
+						["ExtraProdForNonMiners"] = false,
+						["AssemblerSelectorStyle"] = (int)AssemblerSelector.Style.Best,
+						["ModuleSelectorStyle"] = (int)ModuleSelector.Style.Productivity,
+						["FuelPriorityList"] = new JArray(),
 
-					updated["EnabledRecipes"] = original["EnabledRecipes"];
-					updated["EnabledAssemblers"] = original["EnabledAssemblers"];
-					foreach (string miner in original["EnabledMiners"].Select(t => (string)t))
-						((JArray)updated["EnabledAssemblers"]).Add(miner);
+						["EnabledRecipes"] = original["EnabledRecipes"],
+						["EnabledAssemblers"] = original["EnabledAssemblers"]
+					};
+					foreach (string miner in original["EnabledMiners"]?.Select(t => t.Value<string>()).OfType<string>() ?? [])
+						(updated["EnabledAssemblers"] as JArray)?.Add(miner);
 
 					updated["EnabledModules"] = original["EnabledModules"];
 					updated["EnabledBeacons"] = new JArray();
 
 					updated["OldImport"] = true; //special flag for the graph informing it that this is an old save
 
-					JObject updatedGraph = new JObject();
+					JObject updatedGraph = [];
 					updated["ProductionGraph"] = updatedGraph;
 
 					updatedGraph["Version"] = 2;
 					updatedGraph["Object"] = "ProductionGraph";
 
-					updatedGraph["IncludedAssemblers"] = new JArray(new string[] { "###NONE-ASSEMBLER###" }); //there is no info in old foreman files about assembler status. This will make all assemblers be 'missing', but this can be solved by auto-setting assembler for all nodes after import
+					updatedGraph["IncludedAssemblers"] = new JArray(NoneAssembler); //there is no info in old foreman files about assembler status. This will make all assemblers be 'missing', but this can be solved by auto-setting assembler for all nodes after import
 
 					updatedGraph["IncludedModules"] = new JArray(); //no info - thus none
 					updatedGraph["IncludedBeacons"] = new JArray(); //no info - thus none
 
 					//item processing
-					HashSet<string> includedItems = new HashSet<string>();
-					foreach (string item in original["Nodes"].Where(t => (string)t["NodeType"] == "PassThrough" || (string)t["NodeType"] == "Supply" || (string)t["NodeType"] == "Consumer").Select(t => (string)t["ItemName"]))
-						includedItems.Add(item);
-					foreach (string item in original["NodeLinks"].Select(t => (string)t["Item"]))
-						includedItems.Add(item);
+					HashSet<string> includedItems =
+					[
+						.. original["Nodes"]?.Where(t => t["NodeType"]?.Value<string>() == "PassThrough" || t["NodeType"]?.Value<string>() == "Supply" || t["NodeType"]?.Value<string>() == "Consumer").Select(t => t["ItemName"]?.Value<string>()),
+						.. original["NodeLinks"]?.Select(t => t["Item"]?.Value<string>()),
+					];
 					updatedGraph["IncludedItems"] = new JArray(includedItems);
 
 					//recipe processing
-					Dictionary<string, Tuple<HashSet<string>, HashSet<string>>> recipeFossils = new Dictionary<string, Tuple<HashSet<string>, HashSet<string>>>();
-					Dictionary<int, string> recipeNames = new Dictionary<int, string>();
+					Dictionary<string, Tuple<HashSet<string>, HashSet<string>>> recipeFossils = [];
+					Dictionary<int, string> recipeNames = [];
 
-					JArray includedRecipes = new JArray();
+					JArray includedRecipes = [];
 					updatedGraph["IncludedRecipes"] = includedRecipes;
-					Dictionary<string, int> recipeIDs = new Dictionary<string, int>();
+					Dictionary<string, int> recipeIDs = [];
 
-					for(int i = 0; i < ((JArray)original["Nodes"]).Count; i++)
+					for(int i = 0; i < original["Nodes"]?.Count(); i++)
 					{
-						JToken node = original["Nodes"][i];
-						if((string)node["NodeType"] == "Recipe")
+						if(original["Nodes"]?[i] is JToken node && node["NodeType"]?.Value<string>() == "Recipe" && node["RecipeName"]?.Value<string>() is string recipeName)
 						{
-							recipeNames.Add(i, (string)node["RecipeName"]);
-							if(!recipeFossils.ContainsKey((string)node["RecipeName"]))
-								recipeFossils.Add((string)node["RecipeName"], new Tuple<HashSet<string>, HashSet<string>>(new HashSet<string>(), new HashSet<string>()));
+							recipeNames.Add(i, recipeName);
+							if(!recipeFossils.ContainsKey(recipeName))
+								recipeFossils.Add(recipeName, new Tuple<HashSet<string>, HashSet<string>>([], []));
 						}
 					}
 
-					foreach(JToken link in original["NodeLinks"])
+					foreach(JToken link in original["NodeLinks"]?.ToList() ?? [])
 					{
-						int supplierId = (int)link["Supplier"];
-						int consumerId = (int)link["Consumer"];
-						string item = (string)link["Item"];
-						if (recipeNames.ContainsKey(consumerId))
-							recipeFossils[recipeNames[consumerId]].Item1.Add(item);
-						if (recipeNames.ContainsKey(supplierId))
-							recipeFossils[recipeNames[supplierId]].Item2.Add(item);
+						if (link["Supplier"]?.Value<int>() is not int supplierId || link["Consumer"]?.Value<int>() is not int consumerId || link["Item"]?.Value<string>() is not string item)
+							continue;
+						if (recipeNames.TryGetValue(consumerId, out string? consumerStr))
+							recipeFossils[consumerStr].Item1.Add(item);
+						if (recipeNames.TryGetValue(supplierId, out string? supplierStr))
+							recipeFossils[supplierStr].Item2.Add(item);
 					}
 
 					foreach(var recipeFossil in recipeFossils)
 					{
-						JObject includedRecipe = null;
+						JObject? includedRecipe = null;
 
 						if(cache.Recipes.ContainsKey(recipeFossil.Key))
 						{
-							Recipe recipe = cache.Recipes[recipeFossil.Key];
+							IRecipe recipe = cache.Recipes[recipeFossil.Key];
 							bool fits = true;
 							foreach (string ingredient in recipeFossil.Value.Item1)
 								fits &= cache.Items.ContainsKey(ingredient) && recipe.IngredientSet.ContainsKey(cache.Items[ingredient]);
@@ -112,12 +113,12 @@ namespace Foreman
 								fits &= cache.Items.ContainsKey(product) && recipe.ProductSet.ContainsKey(cache.Items[product]);
 							if(fits)
 							{
-								JObject ingredients = new JObject();
-								foreach (Item ingredient in recipe.IngredientList)
+								JObject ingredients = [];
+								foreach (IItem ingredient in recipe.IngredientList)
 									ingredients[ingredient.Name] = recipe.IngredientSet[ingredient];
 								
-								JObject products = new JObject();
-								foreach (Item product in recipe.ProductList)
+								JObject products = [];
+								foreach (IItem product in recipe.ProductList)
 									products[product.Name] = recipe.ProductSet[product];
 
 								includedRecipe = new JObject
@@ -133,11 +134,11 @@ namespace Foreman
 
 						if(includedRecipe == null)
 						{
-							JObject ingredients = new JObject();
+							JObject ingredients = [];
 							foreach (string ingredient in recipeFossil.Value.Item1)
 								ingredients[ingredient] = 1;
 
-							JObject products = new JObject();
+							JObject products = [];
 							foreach (string product in recipeFossil.Value.Item2)
 								products[product] = 1;
 
@@ -151,47 +152,49 @@ namespace Foreman
 							};
 						}
 
-						recipeIDs.Add((string)includedRecipe["Name"], (int)includedRecipe["RecipeID"]);
+						if (includedRecipe["Name"]?.Value<string>() is not string recipeName || includedRecipe["RecipeID"]?.Value<int>() is not int recipeId)
+							throw new InvalidOperationException("Recipe Name/ID is invalid or null");
+
+						recipeIDs.Add(recipeName, recipeId);
 						includedRecipes.Add(includedRecipe);
 					}
 
 					//node processing
-					JArray nodes = new JArray();
+					JArray nodes = [];
 					updatedGraph["Nodes"] = nodes;
 
-					List<string> nodeLocations = original["ElementLocations"].Select(t => (string)t).ToList();
-					HashSet<int> processedNodeIDs = new HashSet<int>();
+					List<string> nodeLocations = original["ElementLocations"]?.Select(t => t.Value<string>()).OfType<string>().ToList() ?? [];
+					HashSet<int> processedNodeIDs = [];
 
-					for (int i = 0; i < original["Nodes"].Count(); i++)
+					for (int i = 0; i < original["Nodes"]?.Count(); i++)
 					{
-						JToken originalNode = original["Nodes"][i];
-						JObject newNode = new JObject
-						{
-							{ "RateType", (int)originalNode["RateType"] },
+						JToken? originalNode = original["Nodes"]?[i];
+						JObject newNode = new() {
+							{ "RateType", originalNode?["RateType"]?.Value<int>() ?? throw new InvalidOperationException("RateType is invalid") },
 							{"NodeID", i },
 							{"Location", nodeLocations[i] }
 						};
-						if ((int)newNode["RateType"] == (int)RateType.Manual)
-							newNode["DesiredRate"] = (double)originalNode["DesiredRate"];
+						if (newNode["RateType"]!.Value<RateType>()! == RateType.Manual)
+							newNode["DesiredRate"] = originalNode["DesiredRate"];
 
 						processedNodeIDs.Add(i);
-						switch((string)originalNode["NodeType"])
+						switch(originalNode["NodeType"]?.Value<string>() ?? throw new InvalidOperationException("NodeType is invalid"))
 						{
 							case "Consumer":
 								newNode["NodeType"] = (int)NodeType.Consumer;
-								newNode["Item"] = (string)originalNode["ItemName"];
+								newNode["Item"] = originalNode["ItemName"];
 								break;
 							case "PassThrough":
 								newNode["NodeType"] = (int)NodeType.Passthrough;
-								newNode["Item"] = (string)originalNode["ItemName"];
+								newNode["Item"] = originalNode["ItemName"];
 								break;
 							case "Supply":
 								newNode["NodeType"] = (int)NodeType.Supplier;
-								newNode["Item"] = (string)originalNode["ItemName"];
+								newNode["Item"] = originalNode["ItemName"];
 								break;
 							case "Recipe":
 								newNode["NodeType"] = (int)NodeType.Recipe;
-								newNode["RecipeID"] = recipeIDs[(string)originalNode["RecipeName"]];
+								newNode["RecipeID"] = recipeIDs[originalNode["RecipeName"]?.Value<string>() ?? throw new InvalidOperationException("RecipeName is invalid")];
 								newNode["Neighbours"] = 0;
 								newNode["ExtraProductivity"] = 0;
 
@@ -209,14 +212,13 @@ namespace Foreman
 					}
 
 					//node link processing
-					JArray nodeLinks = new JArray();
+					JArray nodeLinks = [];
 					updatedGraph["NodeLinks"] = nodeLinks;
 
-					foreach(JToken link in original["NodeLinks"])
+					foreach(JToken link in original["NodeLinks"]?.ToList() ?? [])
 					{
-						int supplierId = (int)link["Supplier"];
-						int consumerId = (int)link["Consumer"];
-						string item = (string)link["Item"];
+						if (link["Supplier"]?.Value<int>() is not int supplierId || link["Consumer"]?.Value<int>() is not int consumerId || link["Item"]?.Value<string>() is not string item)
+							continue;
 
 						if (processedNodeIDs.Contains(supplierId) && processedNodeIDs.Contains(consumerId))
 							nodeLinks.Add(new JObject
@@ -232,11 +234,11 @@ namespace Foreman
 				{
 					//unknown file format
 					MessageBox.Show("Unknown file format.", "Cant load save", MessageBoxButtons.OK);
-					return null;
+					return [];
 				}
 			}
 
-			if ((int)original["Version"] == 1)
+			if (original["Version"]?.Value<int>() == 1)
 			{
 				//Version update 1 -> 2:
 				//	Graph now has the extra productivity for non-miners value 
@@ -245,20 +247,20 @@ namespace Foreman
 				original["ExtraProdForNonMiners"] = false;
 			}
 
-			if ((int)original["Version"] < 5)
+			if (original["Version"]?.Value<int>() < 5)
 			{
 				//Version update 2 -> 6:
 				//	No changes in main save (all changes are within the graph)
 				original["Version"] = 6;
 			}
 			
-			if ((int)original["Version"] == 6)
+			if (original["Version"]?.Value<int>() == 6)
 			{
 				//Version update 7:
 				//  Added EnabledQualities
 
-				JArray qualities = new JArray();
-				foreach(Quality quality in cache.Qualities.Values.Where(q => q.Enabled))
+				JArray qualities = [];
+				foreach(IQuality quality in cache.Qualities.Values.Where(q => q.Enabled))
 					qualities.Add(quality.Name);
 				original["EnabledQualities"] = qualities;
 
@@ -268,46 +270,46 @@ namespace Foreman
             return original;
 		}
 
-		public static JObject UpdateGraph(JObject original, DataCache cache)
+		public static JObject UpdateGraph(JObject original, DCache cache)
 		{
-			if (original["Version"] == null || original["Object"] == null || (string)original["Object"] != "ProductionGraph")
+			if (original["Version"] == null || original["Object"]?.Value<string>() != "ProductionGraph")
 			{
 				//this is most likely the 'original' foreman graph. At the moment there isnt a conversion in place to bring it up to current standard (Feature will be added later)
 				MessageBox.Show("Imported graph could not be updated to current foreman version.\nSorry.", "Cant process import", MessageBoxButtons.OK);
-				return null;
+				return [];
 			}
 
-			if((int)original["Version"] == 1)
+			if(original["Version"]?.Value<int>() == 1)
 			{
 				//Version update 1 -> 2:
 				//	recipe node now has "ExtraPoductivity" value added
 				original["Version"] = 2;
 
-				foreach (JToken nodeJToken in original["Nodes"].Where(jt => (NodeType)(int)jt["NodeType"] == NodeType.Recipe).ToList())
+				foreach (JToken nodeJToken in original["Nodes"]?.Where(jt => jt["NodeType"]?.Value<NodeType>() == NodeType.Recipe).ToList() ?? [])
 					nodeJToken["ExtraProductivity"] = 0;
 			}
 
-			if ((int)original["Version"] == 2)
+			if (original["Version"]?.Value<int>() == 2)
 			{
 				//Version update 2 -> 3:
 				//	Nodes now have Direction parameter
 				original["Version"] = 3;
 
-				foreach (JToken nodeJToken in original["Nodes"].ToList())
+				foreach (JToken nodeJToken in original["Nodes"]?.ToList() ?? [])
 					nodeJToken["Direction"] = (int)NodeDirection.Up;
 			}
 
-			if ((int)original["Version"] == 3)
+			if (original["Version"]?.Value<int>() == 3)
 			{
 				//Version update 3 -> 4:
 				//	Passthrough nodes now have SDraw parameter
 				original["Version"] = 4;
 
-				foreach (JToken nodeJToken in original["Nodes"].Where(n => (NodeType)(int)n["NodeType"] == NodeType.Passthrough).ToList())
+				foreach (JToken nodeJToken in original["Nodes"]?.Where(n => n["NodeType"]?.Value<NodeType>() == NodeType.Passthrough).ToList() ?? [])
 					nodeJToken["SDraw"] = true;
 			}
 
-			if ((int)original["Version"] == 4)
+			if (original["Version"]?.Value<int>() == 4)
 			{
 				//Version update 4 -> 5:
 				//	ProductionGraph gained new properties:
@@ -325,7 +327,7 @@ namespace Foreman
 				original["Solver_LowPriorityPower"] = 2f;
 			}
 
-			if ((int)original["Version"] == 5)
+			if (original["Version"]?.Value<int>() == 5)
 			{
                 //Version update 5 -> 6:
                 //  All nodes now feature a unified 'DesiredSetValue' that replaces the "DesiredAssemblers" from recipe nodes and "DesiredRatePerSec" from all other nodes
@@ -333,14 +335,14 @@ namespace Foreman
 
 				//  Also a new group was added to represent plant processes (IncludedPlantProcesses) - old saves will not have anything here, so just a blank node is fine
 
-                foreach(JToken nodeJToken in original["Nodes"])
+                foreach(JToken nodeJToken in original["Nodes"]?.ToList() ?? [])
                 {
-                    if (nodeJToken["DesiredAssemblers"] != null)
-                        nodeJToken["DesiredSetValue"] = (double)nodeJToken["DesiredAssemblers"];
+                    if (nodeJToken["DesiredAssemblers"]?.Value<double>() is double desiredAsm)
+                        nodeJToken["DesiredSetValue"] = desiredAsm;
                     //if (nodeJToken["DesiredRatePerSec"] != null)
                     //    nodeJToken["DesiredSetValue"] = (double)nodeJToken["DesiredRatePerSec"];
-					if (nodeJToken["DesiredRate"] != null)
-						nodeJToken["DesiredSetValue"] = (double)nodeJToken["DesiredRate"];
+					if (nodeJToken["DesiredRate"]?.Value<double>() is double desiredRate)
+						nodeJToken["DesiredSetValue"] = desiredRate;
                 }
 
 				original["IncludedPlantProcesses"] = new JArray();
@@ -348,16 +350,15 @@ namespace Foreman
                 original["Version"] = 6;
             }
 
-			if ((int)original["Version"] == 6)
+			if (original["Version"]?.Value<int>() == 6)
 			{
 				//Version update 6 -> 7:
 				//  Added 'included qualities'  (list of included qualities set as name = level, include only the 'default' normal quality)
 				//  Added 'maxQualityIterations'  (int value representing max number of quality tiers a recipe node will output with quality modules)
 				//  Added quality options for recipes, assemblers, beacons, modules, and items
 
-				JArray qualities = new JArray();
-				JObject qualityJObject = new JObject
-                {
+				JArray qualities = [];
+				JObject qualityJObject = new() {
                     { "Key", "normal" },
                     { "Value", 0 }
                 };
@@ -367,9 +368,9 @@ namespace Foreman
 				original["MaxQualitySteps"] = 5; //5 is the base number of quality modules in factorio, so its a nice value (using the current max length value could cause issues when combined with those '200 quality' mods)
 				original["DefaultQulity"] = cache.DefaultQuality.Name;
 
-                foreach (JToken nodeJToken in original["Nodes"])
+                foreach (JToken nodeJToken in original["Nodes"]?.ToList() ?? [])
 				{
-					switch ((NodeType)(int)nodeJToken["NodeType"])
+					switch (nodeJToken["NodeType"]?.Value<NodeType>())
 					{
 						case NodeType.Passthrough:
 						case NodeType.Supplier:
@@ -383,26 +384,27 @@ namespace Foreman
                             nodeJToken["RecipeQuality"] = cache.DefaultQuality.Name;
                             nodeJToken["AssemblerQuality"] = cache.DefaultQuality.Name;
 
-							JArray newAssemblerModules = new JArray();
-							foreach (JToken module in nodeJToken["AssemblerModules"])
-								newAssemblerModules.Add(new JObject { ["Name"] = (string)module, ["Quality"] = cache.DefaultQuality.Name});
+							JArray newAssemblerModules = [];
+							foreach (string module in nodeJToken["AssemblerModules"]?.Select(v => v.Value<string>()).OfType<string>() ?? [])
+								newAssemblerModules.Add(new JObject { ["Name"] = module, ["Quality"] = cache.DefaultQuality.Name});
 							nodeJToken["AssemblerModules"] = newAssemblerModules;
 
 							if (nodeJToken["Beacon"] != null)
 							{
 								nodeJToken["BeaconQuality"] = cache.DefaultQuality.Name;
-								JArray newBeaconModules = new JArray();
-								foreach (JToken module in nodeJToken["BeaconModules"])
-									newBeaconModules.Add(new JObject { ["Name"] = (string)module, ["Quality"] = cache.DefaultQuality.Name });
+								JArray newBeaconModules = [];
+								foreach (string module in nodeJToken["BeaconModules"]?.Select(v => v.Value<string>()).OfType<string>() ?? [])
+									newBeaconModules.Add(new JObject { ["Name"] = module, ["Quality"] = cache.DefaultQuality.Name });
 								nodeJToken["BeaconModules"] = newBeaconModules;
 							}
 
                             break;
 					}
 				}
-
-				foreach (JToken linkJToken in original["NodeLinks"])
-					linkJToken["Quality"] = cache.DefaultQuality.Name;
+				var nodeLinks = original["NodeLinks"];
+				if (nodeLinks is not null)
+					foreach (JToken linkJToken in nodeLinks)
+						linkJToken["Quality"] = cache.DefaultQuality.Name;
 
                 original["Version"] = 7;
             }

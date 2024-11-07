@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace Foreman
-{
-	public abstract class GraphElement : IDisposable
-	{
+namespace Foreman.ProductionGraphView.Elements {
+	public abstract class GraphElement : IDisposable {
 		public List<GraphElement> SubElements { get; private set; }
 
 		//bounds assumes 0,0 is the center of this element. X,Y (or location) is the difference between this origin and the parent element origin (NOT! the graph origin! -> this means that moving the parent element will not change the x,y of the child elements)
@@ -30,34 +28,32 @@ namespace Foreman
 
 		public virtual bool Visible { get; protected set; }
 		protected readonly ProductionGraphViewer graphViewer;
-		protected readonly GraphElement myParent;
+		protected readonly GraphElement? myParent;
 
 		protected ContextMenuStrip RightClickMenu;
 
-		protected static readonly Pen devPen = new Pen(new SolidBrush(Color.OrangeRed), 1);
+		protected static readonly Pen devPen = new(new SolidBrush(Color.OrangeRed), 1);
 
-		public GraphElement(ProductionGraphViewer graphViewer, GraphElement parent = null)
-		{
+		public GraphElement(ProductionGraphViewer graphViewer, GraphElement? parent = null) {
 			this.graphViewer = graphViewer;
 			myParent = parent;
 			if (myParent != null)
-				parent.SubElements.Add(this);
+				parent?.SubElements.Add(this);
 
-			RightClickMenu = new ContextMenuStrip();
-			RightClickMenu.ShowItemToolTips = false;
-			RightClickMenu.ShowImageMargin = false;
-			RightClickMenu.Closing += (o, e) =>
-			{
+			RightClickMenu = new ContextMenuStrip {
+				ShowItemToolTips = false,
+				ShowImageMargin = false
+			};
+			RightClickMenu.Closing += (o, e) => {
 				if (e.CloseReason == ToolStripDropDownCloseReason.ItemClicked)
 					e.Cancel = true; //we will handle closing from item clicking within the items themselves
-				else
-				{
+				else {
 					RightClickMenu.Items.Clear();
 					RightClickMenu.ShowCheckMargin = false;
 				}
 			};
 
-			SubElements = new List<GraphElement>();
+			SubElements = [];
 			Visible = true;
 		}
 
@@ -69,40 +65,34 @@ namespace Foreman
 				return Point.Subtract(myParent.GraphToLocal(graph_point), (Size)Location);
 		}
 
-		public Point LocalToGraph(Point local_point)
-		{
+		public Point LocalToGraph(Point local_point) {
 			if (myParent == null) //owned by graphViewer
 				return Point.Add(local_point, (Size)Location);
 			else //subelement of some element
 				return Point.Add(myParent.LocalToGraph(local_point), (Size)Location);
 		}
 
-		public bool IntersectsWithZone(Rectangle graph_zone, int xborder, int yborder)
-		{
+		public bool IntersectsWithZone(Rectangle graph_zone, int xborder, int yborder) {
 			Point local_graph_zone_origin = GraphToLocal(graph_zone.Location);
-			return (Width / 2) > local_graph_zone_origin.X - xborder &&
+			return Width / 2 > local_graph_zone_origin.X - xborder &&
 					-(Width / 2) < local_graph_zone_origin.X + graph_zone.Width + xborder &&
-					 (Height / 2) > local_graph_zone_origin.Y - yborder &&
+					 Height / 2 > local_graph_zone_origin.Y - yborder &&
 					-(Height / 2) < local_graph_zone_origin.Y + graph_zone.Height + yborder;
 		}
 
-		public virtual void UpdateVisibility(Rectangle graph_zone, int xborder = 0, int yborder = 0)
-		{
+		public virtual void UpdateVisibility(Rectangle graph_zone, int xborder = 0, int yborder = 0) {
 			Visible = IntersectsWithZone(graph_zone, xborder, yborder);
 		}
 
-		public virtual bool ContainsPoint(Point graph_point)
-		{
+		public virtual bool ContainsPoint(Point graph_point) {
 			if (!Visible)
 				return false;
 			return Bounds.Contains(GraphToLocal(graph_point));
 		}
 
 		public virtual void PrePaint() { }
-		public void Paint(Graphics graphics, NodeDrawingStyle style)
-		{
-			if (Visible)
-			{
+		public void Paint(Graphics graphics, NodeDrawingStyle style) {
+			if (Visible) {
 				//call own draw operation
 				Draw(graphics, style);
 
@@ -114,39 +104,43 @@ namespace Foreman
 
 		protected abstract void Draw(Graphics graphics, NodeDrawingStyle style);
 
-		public virtual List<TooltipInfo> GetToolTips(Point graph_point) { return new List<TooltipInfo>(); }
+		public virtual List<TooltipInfo> GetToolTips(Point graph_point) { return []; }
 		public virtual void MouseMoved(Point graph_point) { }
 		public virtual void MouseDown(Point graph_point, MouseButtons button) { }
 		public virtual void MouseUp(Point graph_point, MouseButtons button, bool wasDragged) { }
 		public virtual void Dragged(Point graph_point) { }
 
-		public virtual void Dispose()
-		{
-			foreach (GraphElement element in SubElements.ToArray())
-				element.Dispose();
-			SubElements.Clear();
-			if (myParent != null)
-				myParent.SubElements.Remove(this);
-
-			RightClickMenu.Dispose();
-
-			graphViewer.Invalidate();
+		public void Dispose() {
+			Dispose(true);
+			GC.SuppressFinalize(this);
 		}
 
-		internal string BuildingQuantityToText(double quantity)
-		{
+		protected virtual void Dispose(bool disposing) {
+			if (disposing) {
+				foreach (GraphElement element in SubElements.ToArray())
+					element.Dispose();
+				SubElements.Clear();
+				myParent?.SubElements.Remove(this);
+
+				RightClickMenu.Dispose();
+
+				graphViewer.Invalidate();
+			}
+		}
+
+		internal static string BuildingQuantityToText(double quantity) {
 			string text = "";
-            if (quantity >= 10000)
-                text += quantity.ToString("0.##e0");
-            else if (Properties.Settings.Default.RoundAssemblerCount)
-                text += Math.Ceiling(quantity).ToString("0");
-            else if (quantity >= 0.1)
-                text += quantity.ToString("0.#");
-            else if (quantity != 0)
-                text += "<0.1";
-            else
-                text += "0";
+			if (quantity >= 10000)
+				text += quantity.ToString("0.##e0");
+			else if (Properties.Settings.Default.RoundAssemblerCount)
+				text += Math.Ceiling(quantity).ToString("0");
+			else if (quantity >= 0.1)
+				text += quantity.ToString("0.#");
+			else if (quantity != 0)
+				text += "<0.1";
+			else
+				text += "0";
 			return text;
-        }
+		}
 	}
 }

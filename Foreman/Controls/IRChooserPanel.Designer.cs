@@ -17,6 +17,7 @@ namespace Foreman
             if (disposing && (components != null))
             {
                 components.Dispose();
+				GroupButtonToolTip.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -89,7 +90,6 @@ namespace Foreman
             this.MainTable.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.MainTable.Size = new System.Drawing.Size(287, 412);
             this.MainTable.TabIndex = 0;
-            this.MainTable.Paint += new System.Windows.Forms.PaintEventHandler(this.MainTable_Paint);
             // 
             // OtherNodeOptionsBTable
             // 

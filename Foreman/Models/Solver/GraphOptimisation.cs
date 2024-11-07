@@ -1,13 +1,16 @@
 ﻿//#define VERBOSEDEBUG
 
+using Foreman.Models;
+using Foreman.Models.Nodes;
+using Foreman.Models.Solver;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
 
-namespace Foreman
-{
+namespace Foreman {
 	public partial class ProductionGraph
 	{
 		private int updateCounter = 0;
@@ -25,7 +28,7 @@ namespace Foreman
 			foreach (RecipeNode node in nodeGroup.Where(n => n is RecipeNode))
 				minRatio = Math.Min(minRatio, node.GetMinOutputRatio());
 
-			ProductionSolver solver = new ProductionSolver(PullOutputNodes, Math.Pow(10, PullOutputNodesPower), minRatio, Math.Pow(10, LowPriorityPower));
+			ProductionSolver solver = new(PullOutputNodes, Math.Pow(10, PullOutputNodesPower), minRatio, Math.Pow(10, LowPriorityPower));
 
 			foreach (BaseNode node in nodeGroup)
 				node.AddConstraints(solver);
@@ -70,7 +73,7 @@ namespace Foreman
 		internal void AddConstraints(ProductionSolver solver)
 		{
 			if (this is RecipeNode rNode)
-				solver.AddRecipeNode(rNode, rNode.factoryRate()); //add node with minimization requirement on number of buildings
+				solver.AddRecipeNode(rNode, rNode.FactoryRate()); //add node with minimization requirement on number of buildings
 			else
 				solver.AddNode(this); //add node without any minimization requirements
 

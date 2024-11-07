@@ -1,8 +1,10 @@
-﻿using System;
+﻿using Foreman.Controls;
+using Foreman.Models.Nodes;
+
+using System;
 using System.Windows.Forms;
 
-namespace Foreman
-{
+namespace Foreman {
 	public partial class EditFlowPanel : UserControl
 	{
 		private readonly ProductionGraphViewer myGraphViewer;
@@ -15,7 +17,7 @@ namespace Foreman
 			SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
 
 			nodeData = node;
-			nodeController = graphViewer.Graph.RequestNodeController(node);
+			nodeController = graphViewer.Graph.RequestNodeController(node) ?? throw new InvalidOperationException("Failed to get nodeController");
 			myGraphViewer = graphViewer;
 
 			RateLabel.Text = node.SetValueDescription;
@@ -66,14 +68,14 @@ namespace Foreman
 			UpdateFixedFlowInputDecimals(FixedFlowInput);
 		}
 
-		private void UpdateFixedFlowInputDecimals(NumericUpDown nud)
+		private static void UpdateFixedFlowInputDecimals(NumericUpDown nud)
 		{
 			int decimals = MathDecimals.GetDecimals(nud.Value);
 			decimals = Math.Min(decimals, 4);
 			nud.DecimalPlaces = decimals;
 		}
 
-		private void FixedOption_CheckChanged(object sender, EventArgs e)
+		private void FixedOption_CheckChanged(object? sender, EventArgs e)
 		{
 			FixedFlowInput.Enabled = FixedOption.Checked;
 			RateType updatedRateType = (FixedOption.Checked) ? RateType.Manual : RateType.Auto;
@@ -85,18 +87,18 @@ namespace Foreman
 			}
 		}
 
-		private void FixedFlowInput_ValueChanged(object sender, EventArgs e)
+		private void FixedFlowInput_ValueChanged(object? sender, EventArgs e)
 		{
 			SetFixedRate();
 		}
 
-		private void SimplePassthroughNodesCheckBox_CheckedChanged(object sender, EventArgs e)
+		private void SimplePassthroughNodesCheckBox_CheckedChanged(object? sender, EventArgs e)
 		{
-			(nodeController as PassthroughNodeController).SetSimpleDraw(SimplePassthroughNodesCheckBox.Checked);
+			(nodeController as PassthroughNodeController)?.SetSimpleDraw(SimplePassthroughNodesCheckBox.Checked);
 			myGraphViewer.Invalidate();
 		}
 
-		private void KeyNodeCheckBox_CheckedChanged(object sender, EventArgs e)
+		private void KeyNodeCheckBox_CheckedChanged(object? sender, EventArgs e)
 		{
 			nodeController.SetKeyNode(KeyNodeCheckBox.Checked);
 			KeyNodeTitleLabel.Visible = nodeData.KeyNode;
@@ -105,7 +107,7 @@ namespace Foreman
 			myGraphViewer.Invalidate();
 		}
 
-		private void KeyNodeTitleInput_TextChanged(object sender, EventArgs e)
+		private void KeyNodeTitleInput_TextChanged(object? sender, EventArgs e)
 		{
 			nodeController.SetKeyNodeTitle(KeyNodeTitleInput.Text);
 		}

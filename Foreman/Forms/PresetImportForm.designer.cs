@@ -1,5 +1,6 @@
-﻿namespace Foreman
-{
+﻿using Foreman.Controls;
+
+namespace Foreman {
 	partial class PresetImportForm
 	{
 		/// <summary>
@@ -16,6 +17,7 @@
 			if (disposing && (components != null))
 			{
 				components.Dispose();
+				cts.Dispose();
 			}
 			base.Dispose(disposing);
 		}
@@ -49,7 +51,7 @@
             this.OKButton = new System.Windows.Forms.Button();
             this.CancelImportButtonB = new System.Windows.Forms.Button();
             this.CancelImportButton = new System.Windows.Forms.Button();
-            this.ImportProgressBar = new Foreman.CustomProgressBar();
+            this.ImportProgressBar = new Foreman.Controls.CustomProgressBar();
             this.FactorioLocationGroup.SuspendLayout();
             this.FactorioLocationTable.SuspendLayout();
             this.FactorioSettingsGroup.SuspendLayout();

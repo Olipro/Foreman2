@@ -968,7 +968,7 @@ namespace Foreman
 			this.keyNodesExportButton.TabIndex = 31;
 			this.keyNodesExportButton.Text = "Export CSV";
 			this.keyNodesExportButton.UseVisualStyleBackColor = true;
-			this.keyNodesExportButton.Click += new System.EventHandler(this.keyNodesExportButton_Click);
+			this.keyNodesExportButton.Click += new System.EventHandler(this.KeyNodesExportButton_Click);
 			// 
 			// tableLayoutPanel1
 			// 

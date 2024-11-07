@@ -1,98 +1,59 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 
-namespace Foreman
-{
-	public interface Technology : DataObjectBase
-	{
-		IReadOnlyCollection<Technology> Prerequisites { get; }
-		IReadOnlyCollection<Technology> PostTechs { get; }
-		IReadOnlyCollection<Recipe> UnlockedRecipes { get; }
-        IReadOnlyCollection<Quality> UnlockedQualities { get; }
-        IReadOnlyDictionary<Item, double> SciPackSet { get; }
-		IReadOnlyList<Item> SciPackList { get; }
+namespace Foreman.DataCache.DataTypes {
+	public interface ITechnology : IDataObjectBase {
+		IReadOnlyCollection<ITechnology> Prerequisites { get; }
+		IReadOnlyCollection<ITechnology> PostTechs { get; }
+		IReadOnlyCollection<IRecipe> UnlockedRecipes { get; }
+		IReadOnlyCollection<IQuality> UnlockedQualities { get; }
+		IReadOnlyDictionary<IItem, double> SciPackSet { get; }
+		IReadOnlyList<IItem> SciPackList { get; }
 		double ResearchCost { get; }
 		int Tier { get; } //furthest distance from this tech to the starting tech. nice way or ordering technologies
 	}
 
-	public class TechnologyPrototype : DataObjectBasePrototype, Technology
-	{
-		public IReadOnlyCollection<Technology> Prerequisites { get { return prerequisites; } }
-		public IReadOnlyCollection<Technology> PostTechs { get { return postTechs; } }
-		public IReadOnlyCollection<Recipe> UnlockedRecipes { get { return unlockedRecipes; } }
-        public IReadOnlyCollection<Quality> UnlockedQualities { get { return unlockedQualities; } }
-        public IReadOnlyDictionary<Item, double> SciPackSet { get { return sciPackSet; } }
-		public IReadOnlyList<Item> SciPackList { get { return sciPackList; } }
-		public double ResearchCost { get; set; }
+	public class TechnologyPrototype(DCache dCache, string name, string friendlyName) : DataObjectBasePrototype(dCache, name, friendlyName, "-"), ITechnology {
+		public IReadOnlyCollection<ITechnology> Prerequisites { get { return PrerequisitesInternal; } }
+		public IReadOnlyCollection<ITechnology> PostTechs { get { return PostTechsInternal; } }
+		public IReadOnlyCollection<IRecipe> UnlockedRecipes { get { return UnlockedRecipesInternal; } }
+		public IReadOnlyCollection<IQuality> UnlockedQualities { get { return UnlockedQualitiesInternal; } }
+		public IReadOnlyDictionary<IItem, double> SciPackSet { get { return SciPackSetInternal; } }
+		public IReadOnlyList<IItem> SciPackList { get { return SciPackListInternal; } }
+		public double ResearchCost { get; set; } = 0;
 		public int Tier { get; set; }
 
-		internal HashSet<TechnologyPrototype> prerequisites { get; private set; }
-		internal HashSet<TechnologyPrototype> postTechs { get; private set; }
-		internal HashSet<RecipePrototype> unlockedRecipes { get; private set; }
-		internal HashSet<QualityPrototype> unlockedQualities { get; private set; }
-		internal Dictionary<Item, double> sciPackSet { get; private set; }
-		internal List<Item> sciPackList { get; private set; }
+		internal HashSet<TechnologyPrototype> PrerequisitesInternal { get; private set; } = [];
+		internal HashSet<TechnologyPrototype> PostTechsInternal { get; private set; } = [];
+		internal HashSet<RecipePrototype> UnlockedRecipesInternal { get; private set; } = [];
+		internal HashSet<QualityPrototype> UnlockedQualitiesInternal { get; private set; } = [];
+		internal Dictionary<IItem, double> SciPackSetInternal { get; private set; } = [];
+		internal List<IItem> SciPackListInternal { get; private set; } = [];
 
-
-		public TechnologyPrototype(DataCache dCache, string name, string friendlyName) : base(dCache, name, friendlyName, "-")
-		{
-			prerequisites = new HashSet<TechnologyPrototype>();
-			postTechs = new HashSet<TechnologyPrototype>();
-			unlockedRecipes = new HashSet<RecipePrototype>();
-			unlockedQualities = new HashSet<QualityPrototype>();
-			sciPackSet = new Dictionary<Item, double>();
-			sciPackList = new List<Item>();
-			ResearchCost = 0;
-		}
-
-		public void InternalOneWayAddSciPack(ItemPrototype pack, double quantity)
-		{
-			if (sciPackSet.ContainsKey(pack))
-				sciPackSet[pack] += quantity;
-			else
-			{
-				sciPackSet.Add(pack, quantity);
-				sciPackList.Add(pack);
+		public void InternalOneWayAddSciPack(ItemPrototype pack, double quantity) {
+			if (SciPackSetInternal.ContainsKey(pack))
+				SciPackSetInternal[pack] += quantity;
+			else {
+				SciPackSetInternal.Add(pack, quantity);
+				SciPackListInternal.Add(pack);
 			}
 		}
 
-		public override int GetHashCode()
-		{
+		public override int GetHashCode() {
 			return Name.GetHashCode();
 		}
 
-		public override bool Equals(object obj)
-		{
-			if (!(obj is TechnologyPrototype))
-			{
-				return false;
-			}
-			return this == (TechnologyPrototype)obj;
+		public override bool Equals(object? obj) => obj is TechnologyPrototype t && t == this;
+
+		public static bool operator ==(TechnologyPrototype? item1, TechnologyPrototype? item2) {
+			return ReferenceEquals(item1, item2) || (item1 != null && item2 != null && item1.Name == item2.Name);
 		}
 
-		public static bool operator ==(TechnologyPrototype item1, TechnologyPrototype item2)
-		{
-			if (System.Object.ReferenceEquals(item1, item2))
-			{
-				return true;
-			}
-			if ((object)item1 == null || (object)item2 == null)
-			{
-				return false;
-			}
-
-			return item1.Name == item2.Name;
-		}
-
-		public static bool operator !=(TechnologyPrototype item1, TechnologyPrototype item2)
-		{
+		public static bool operator !=(TechnologyPrototype? item1, TechnologyPrototype? item2) {
 			return !(item1 == item2);
 		}
 
-		public override string ToString()
-		{
-			return String.Format("Technology: {0}", Name);
+		public override string ToString() {
+			return string.Format("Technology: {0}", Name);
 		}
 
 	}

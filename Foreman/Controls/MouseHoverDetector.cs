@@ -14,22 +14,21 @@ namespace Foreman
 	//  - minimum distance moved before ending check
 	//  - switch to non-static design (to allow for better control checks
 	//  - optimization of hover calls (only calls the control that was last moused over, not a all-check of all controls)
-	public class MouseHoverDetector
+	public partial class MouseHoverDetector : IDisposable
 	{
-		private Timer timer;
-		private Dictionary<Control, Info> items;
-		private Control lastMouseMoveControl; //we will use this to ensure the hover start & end only happen to the given control
+		private readonly Timer timer;
+		private readonly Dictionary<Control, Info> items;
+		private readonly Control? lastMouseMoveControl = null; //we will use this to ensure the hover start & end only happen to the given control
 
-		private TimeSpan HoverTime;
-		private TimeSpan ReshowTime;
-		private int HoverGraceDistance;
+		private readonly TimeSpan HoverTime;
+		private readonly TimeSpan ReshowTime;
+		private readonly int HoverGraceDistance;
 
 		public MouseHoverDetector(int hoverTimeMilliseconds = 200, int reshowTimeMilliseconds = 200, int hoverGraceDistance = 15)
 		{
-			items = new Dictionary<Control, Info>();
+			items = [];
 			timer = new Timer { Enabled = false, Interval = 50 };
-			timer.Tick += new EventHandler(timer_Tick);
-			lastMouseMoveControl = null;
+			timer.Tick += new EventHandler(Timer_Tick);
 
 			HoverTime = TimeSpan.FromMilliseconds(hoverTimeMilliseconds);
 			ReshowTime = TimeSpan.FromMilliseconds(reshowTimeMilliseconds);
@@ -38,19 +37,14 @@ namespace Foreman
 
 		public void Add(Control control, MouseEventHandler hoverStartEventHandler, EventHandler hoverEndEventHandler)
 		{
-			Info info;
-			if (items.TryGetValue(control, out info))
-			{
+			if (items.TryGetValue(control, out Info? info)) {
 				info.HoverStartHandler = hoverStartEventHandler;
 				info.HoverEndHandler = hoverEndEventHandler;
-			}
-			else
-			{
+			} else {
 				if (items.Count == 0)
 					timer.Enabled = true;
 
-				info = new Info
-				{
+				info = new Info {
 					HoverStartHandler = hoverStartEventHandler,
 					HoverEndHandler = hoverEndEventHandler,
 					IsHovering = false,
@@ -58,18 +52,16 @@ namespace Foreman
 				};
 
 				items.Add(control, info);
-				control.MouseMove += new MouseEventHandler(control_MouseMove);
-				control.HandleDestroyed += new EventHandler(control_HandleDestroyed);
+				control.MouseMove += new MouseEventHandler(Control_MouseMove);
+				control.HandleDestroyed += new EventHandler(Control_HandleDestroyed);
 			}
 		}
 
 		public void Remove(Control control)
 		{
-			Info info;
-			if (items.TryGetValue(control, out info))
-			{
-				control.MouseMove -= new MouseEventHandler(control_MouseMove);
-				control.HandleDestroyed -= new EventHandler(control_HandleDestroyed);
+			if (items.TryGetValue(control, out Info? info)) {
+				control.MouseMove -= new MouseEventHandler(Control_MouseMove);
+				control.HandleDestroyed -= new EventHandler(Control_HandleDestroyed);
 				items.Remove(control);
 				if (items.Count == 0)
 					timer.Enabled = false;
@@ -78,17 +70,18 @@ namespace Foreman
 
 		private class Info
 		{
-			public MouseEventHandler HoverStartHandler;
-			public EventHandler HoverEndHandler;
+			public required MouseEventHandler HoverStartHandler;
+			public required EventHandler HoverEndHandler;
 			public DateTime LastMoveTime;
 			public bool IsHovering;
 			public Point HoverStartPoint;
 		}
 
-		private void control_MouseMove(object sender, MouseEventArgs e)
+		private void Control_MouseMove(object? sender, MouseEventArgs e)
 		{
-			lastMouseMoveControl = (Control)sender;
-			Info info = items[(Control)sender];
+			if (sender is not Control lastMouseMoveControl)
+				return;
+			Info info = items[lastMouseMoveControl];
 
 			if (info.IsHovering)
 			{
@@ -105,12 +98,13 @@ namespace Foreman
 			}
 		}
 
-		private void control_HandleDestroyed(object sender, EventArgs e)
+		private void Control_HandleDestroyed(object? sender, EventArgs e)
 		{
-			Remove((Control)sender);
+			if (sender is Control control)
+				Remove(control);
 		}
 
-		private void timer_Tick(object sender, EventArgs e)
+		private void Timer_Tick(object? sender, EventArgs e)
 		{
 			if (lastMouseMoveControl == null)
 				return;
@@ -129,7 +123,15 @@ namespace Foreman
 
 		public void Dispose()
 		{
-			timer.Dispose();
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing) {
+			if (disposing) {
+				timer.Dispose();
+				lastMouseMoveControl?.Dispose();
+			}
 		}
 	}
 }

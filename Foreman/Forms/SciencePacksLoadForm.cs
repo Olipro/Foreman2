@@ -1,27 +1,26 @@
-﻿using System;
+﻿using Foreman.DataCache;
+using Foreman.DataCache.DataTypes;
+
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Foreman
-{
+namespace Foreman {
 	public partial class SciencePacksLoadForm : Form
 	{
-		private Dictionary<Button, bool> SciencePackButtons;
-		private static Color EnabledPackBGColor = Color.DarkGreen;
-		private static Color DisabledPackBGColor = Color.DarkRed;
+		private readonly Dictionary<Button, bool> SciencePackButtons;
+		private static readonly Color EnabledPackBGColor = Color.DarkGreen;
+		private static readonly Color DisabledPackBGColor = Color.DarkRed;
 		private const int IconSize = 48; //actually a bit smaller due to button padding, but whatever.
 		private const int MaxColumns = 14;
 
-		private readonly DataCache DCache;
-		private readonly HashSet<DataObjectBase> EnabledObjects;
+		private readonly DCache DCache;
+		private readonly HashSet<IDataObjectBase> EnabledObjects;
 
-		public SciencePacksLoadForm(DataCache cache, HashSet<DataObjectBase> enabledObjects)
+		public SciencePacksLoadForm(DCache cache, HashSet<IDataObjectBase> enabledObjects)
 		{
 			DCache = cache;
 			EnabledObjects = enabledObjects;
@@ -31,7 +30,7 @@ namespace Foreman
 			SciencePackTable.RowStyles[0].SizeType = SizeType.Absolute;
 			SciencePackTable.RowStyles[0].Height = IconSize;
 
-			SciencePackButtons = new Dictionary<Button, bool>();
+			SciencePackButtons = [];
 
 			PopulateSciencePackOptions();
 		}
@@ -51,17 +50,18 @@ namespace Foreman
 
 
 			SciencePackTable.Height = IconSize;
-			foreach(Item sciencePack in DCache.SciencePacks)
+			foreach(IItem sciencePack in DCache.SciencePacks)
 			{
 				Console.WriteLine(sciencePack);
 
-				NFButton button = new NFButton();
-				button.BackColor = DisabledPackBGColor;
-				button.ForeColor = Color.Gray;
-				button.BackgroundImageLayout = ImageLayout.Zoom;
-				button.BackgroundImage = sciencePack.Icon;
-				button.UseVisualStyleBackColor = false;
-				button.FlatStyle = FlatStyle.Flat;
+				NFButton button = new() {
+					BackColor = DisabledPackBGColor,
+					ForeColor = Color.Gray,
+					BackgroundImageLayout = ImageLayout.Zoom,
+					BackgroundImage = sciencePack.Icon,
+					UseVisualStyleBackColor = false,
+					FlatStyle = FlatStyle.Flat
+				};
 				button.FlatAppearance.BorderSize = 0;
 				button.FlatAppearance.BorderColor = Color.Black;
 				button.TabStop = false;
@@ -81,10 +81,10 @@ namespace Foreman
 
 		}
 
-		private void Button_Click(object sender, EventArgs e)
+		private void Button_Click(object? sender, EventArgs e)
 		{
-			Button sciPackButton = (Button)sender;
-			Item sciPack = sciPackButton.Tag as Item;
+			if (sender is not Button sciPackButton || sciPackButton.Tag is not IItem sciPack)
+				return;
 			bool enabled = !SciencePackButtons[sciPackButton];
 			SciencePackButtons[sciPackButton] = enabled;
 			sciPackButton.BackColor = enabled ? EnabledPackBGColor : DisabledPackBGColor;
@@ -96,7 +96,7 @@ namespace Foreman
 			{
 				if (enabled) //enable all science packs prerequisites of the clicked science pack
 				{
-					if (DCache.SciencePackPrerequisites[sciPack].Contains((Item)sciButton.Tag))
+					if (sciButton.Tag is IItem iItem && DCache.SciencePackPrerequisites[sciPack].Contains(iItem))
 					{
 						sciButton.BackColor = EnabledPackBGColor;
 						SciencePackButtons[sciButton] = true;
@@ -104,7 +104,7 @@ namespace Foreman
 				}
 				else //disable all science packs that have the clicked science pack as their prerequisite
 				{
-					if (DCache.SciencePackPrerequisites[(Item)sciButton.Tag].Contains(sciPack))
+					if (sciButton.Tag is IItem iItem && DCache.SciencePackPrerequisites[iItem].Contains(sciPack))
 					{
 						sciButton.BackColor = DisabledPackBGColor;
 						SciencePackButtons[sciButton] = false;
@@ -115,57 +115,59 @@ namespace Foreman
 
 		//------------------------------------------------------------------------------------------------------Button hovers
 
-		private void Button_MouseHover(object sender, EventArgs e)
+		private void Button_MouseHover(object? sender, EventArgs e)
 		{
-			Control control = (Control)sender;
-			if (control.Tag is DataObjectBase dob)
+			if (sender is not Control control)
+				return;
+			if (control.Tag is IDataObjectBase dob)
 			{
 				ToolTip.SetText(dob.FriendlyName);
 				ToolTip.Show(this, Point.Add(PointToClient(Control.MousePosition), new Size(15, 5)));
 			}
 		}
 
-		private void Button_MouseLeave(object sender, EventArgs e)
+		private void Button_MouseLeave(object? sender, EventArgs e)
 		{
-			ToolTip.Hide((Control)sender);
+			if (sender is Control control)
+				ToolTip.Hide(control);
 		}
 
-		private void ConfirmationButton_Click(object sender, EventArgs e)
+		private void ConfirmationButton_Click(object? sender, EventArgs e)
 		{
-			HashSet<Item> acceptedSciencePacks = new HashSet<Item>(SciencePackButtons.Where(kvp => kvp.Value).Select(kvp => kvp.Key.Tag as Item));
+			var acceptedSciencePacks = SciencePackButtons.Where(kvp => kvp.Value).Select(kvp => kvp.Key.Tag as IItem).OfType<IItem>().ToHashSet();
 			EnabledObjects.Clear();
 			EnabledObjects.Add(DCache.PlayerAssembler);
 
 			//go through all technologies, check for fit compared to accepted science packs, and add its recipes to the set of enabled recipes
-			foreach (Technology tech in DCache.Technologies.Values)
+			foreach (ITechnology tech in DCache.Technologies.Values)
 				if (tech.Available && !tech.SciPackList.Except(acceptedSciencePacks).Any())
 					EnabledObjects.UnionWith(tech.UnlockedRecipes);
 
 			//go through all the assemblers, beacons, and modules and add them to the enabled set if at least one of their associated items has at least one production recipe that is in the enabled set.
-			foreach (Assembler assembler in DCache.Assemblers.Values)
+			foreach (IAssembler assembler in DCache.Assemblers.Values)
 			{
 				bool enabled = false;
-				foreach (IReadOnlyCollection<Recipe> recipes in assembler.AssociatedItems.Select(item => item.ProductionRecipes))
-					foreach (Recipe recipe in recipes)
+				foreach (IReadOnlyCollection<IRecipe> recipes in assembler.AssociatedItems.Select(item => item.ProductionRecipes))
+					foreach (IRecipe recipe in recipes)
 						enabled |= EnabledObjects.Contains(recipe);
 				if (enabled)
 					EnabledObjects.Add(assembler);
 			}
 
-			foreach (Beacon beacon in DCache.Beacons.Values)
+			foreach (IBeacon beacon in DCache.Beacons.Values)
 			{
 				bool enabled = false;
-				foreach (IReadOnlyCollection<Recipe> recipes in beacon.AssociatedItems.Select(item => item.ProductionRecipes))
-					foreach (Recipe recipe in recipes)
+				foreach (IReadOnlyCollection<IRecipe> recipes in beacon.AssociatedItems.Select(item => item.ProductionRecipes))
+					foreach (IRecipe recipe in recipes)
 						enabled |= EnabledObjects.Contains(recipe);
 				if (enabled)
 					EnabledObjects.Add(beacon);
 			}
 
-			foreach (Module module in DCache.Modules.Values)
+			foreach (IModule module in DCache.Modules.Values)
 			{
 				bool enabled = false;
-				foreach (Recipe recipe in module.AssociatedItem.ProductionRecipes)
+				foreach (IRecipe recipe in module.AssociatedItem.ProductionRecipes)
 					enabled |= EnabledObjects.Contains(recipe);
 				if (enabled)
 					EnabledObjects.Add(module);

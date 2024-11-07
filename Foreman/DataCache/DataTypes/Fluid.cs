@@ -1,42 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Foreman
-{
-	public interface Fluid : Item
-	{
+﻿namespace Foreman.DataCache.DataTypes {
+	public interface IFluid : IItem {
 		bool IsTemperatureDependent { get; }
 		double DefaultTemperature { get; }
 		double SpecificHeatCapacity { get; }
 		double GasTemperature { get; }
 		double MaxTemperature { get; }
 
-		string GetTemperatureRangeFriendlyName(fRange tempRange);
+		string GetTemperatureRangeFriendlyName(FRange tempRange);
 		string GetTemperatureFriendlyName(double temperature);
 	}
 
-	public class FluidPrototype : ItemPrototype, Fluid
-	{
-		public bool IsTemperatureDependent { get; internal set; } //true if not all recipes can accept each other (ex: fluid produced in R1 is at 10*c, and is required to be at 20+*c as ingredient at R2)
-		public double DefaultTemperature { get; internal set; }
-		public double SpecificHeatCapacity { get; internal set; }
-		public double GasTemperature { get; internal set; }
-		public double MaxTemperature { get; internal set; }
+	public class FluidPrototype(DCache dCache, string name, string friendlyName, SubgroupPrototype subgroup, string order, bool isMissing = false) : ItemPrototype(dCache, name, friendlyName, subgroup, order, isMissing), IFluid {
+		public bool IsTemperatureDependent { get; internal set; } = false;
+		public double DefaultTemperature { get; internal set; } = 0;
+		public double SpecificHeatCapacity { get; internal set; } = 0;
+		public double GasTemperature { get; internal set; } = 0;
+		public double MaxTemperature { get; internal set; } = 0;
 
-		public FluidPrototype(DataCache dCache, string name, string friendlyName, SubgroupPrototype subgroup, string order, bool isMissing = false) : base(dCache, name, friendlyName, subgroup, order, isMissing)
-		{
-			IsTemperatureDependent = false;
-			DefaultTemperature = 0;
-			SpecificHeatCapacity = 0;
-			GasTemperature = 0;
-			MaxTemperature = 0;
-		}
-
-		public string GetTemperatureRangeFriendlyName(fRange tempRange)
-		{
+		public string GetTemperatureRangeFriendlyName(FRange tempRange) {
 			if (tempRange.Ignore)
 				return FriendlyName;
 
@@ -58,8 +39,7 @@ namespace Foreman
 			return name;
 		}
 
-		public string GetTemperatureFriendlyName(double temperature)
-		{
+		public string GetTemperatureFriendlyName(double temperature) {
 			return string.Format("{0} ({1}°c)", FriendlyName, temperature.ToString("0"));
 		}
 

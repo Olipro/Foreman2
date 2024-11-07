@@ -1,6 +1,7 @@
-﻿namespace Foreman
-{
-    partial class SettingsForm
+﻿using Foreman.Controls;
+
+namespace Foreman {
+	partial class SettingsForm
     {
         /// <summary>
         /// Required designer variable.
@@ -16,6 +17,7 @@
             if (disposing && (components != null))
             {
                 components.Dispose();
+				mhDetector.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -136,7 +138,7 @@
             this.PullConsumerNodesPowerInput = new System.Windows.Forms.NumericUpDown();
             this.PullConsumerNodesCheckBox = new System.Windows.Forms.CheckBox();
             this.FormButtonsTable = new System.Windows.Forms.TableLayoutPanel();
-            this.RecipeToolTip = new Foreman.RecipeToolTip();
+            this.RecipeToolTip = new Foreman.Controls.RecipeToolTip();
             this.groupBox4.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.DifficultyTable.SuspendLayout();

@@ -1,8 +1,9 @@
-﻿using System.Drawing;
+﻿using Foreman.Controls;
 
-namespace Foreman
-{
-    partial class EditRecipePanel
+using System.Drawing;
+
+namespace Foreman {
+	partial class EditRecipePanel
     {
         /// <summary> 
         /// Required designer variable.
@@ -106,7 +107,7 @@ namespace Foreman
             this.LowPriorityCheckBox = new System.Windows.Forms.CheckBox();
             this.KeyNodeTitleLabel = new System.Windows.Forms.Label();
             this.QualitySelector = new System.Windows.Forms.ComboBox();
-            this.ToolTip = new Foreman.CustomToolTip();
+            this.ToolTip = new Foreman.Controls.CustomToolTip();
             this.AssemblerInfoTable.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.NeighbourInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.ExtraProductivityInput)).BeginInit();

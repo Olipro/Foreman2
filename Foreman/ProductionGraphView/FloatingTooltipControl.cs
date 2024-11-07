@@ -1,41 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Foreman.ProductionGraphView;
+
+using System;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Foreman
-{
+namespace Foreman {
 	public enum Direction { Up, Down, Left, Right, None }
 
-	public struct TooltipInfo
-	{
-		public TooltipInfo(Point screenLocation, Size screenSize, Direction direction, string text, Action<Graphics, Point> customDraw)
-		{
-			ScreenLocation = screenLocation;
-			ScreenSize = screenSize;
-			Direction = direction;
-			Text = text;
-
-			CustomDraw = customDraw;
-		}
-
-		public Point ScreenLocation;
-		public Size ScreenSize;
-		public Direction Direction;
-		public string Text;
-		public Action<Graphics, Point> CustomDraw;
+	public struct TooltipInfo(Point screenLocation, Size screenSize, Direction direction, string text, Action<Graphics, Point> customDraw) {
+		public Point ScreenLocation = screenLocation;
+		public Size ScreenSize = screenSize;
+		public Direction Direction = direction;
+		public string Text = text;
+		public Action<Graphics, Point> CustomDraw = customDraw;
 	}
 
-	public class FloatingTooltipControl : IDisposable
+	public partial class FloatingTooltipControl : IDisposable
 	{
 		public Control Control { get; private set; }
 		public Direction Direction { get; private set; }
 		public Point GraphLocation { get; private set; }
 		public ProductionGraphViewer GraphViewer { get; private set; }
-		public event EventHandler Closing;
+		public event EventHandler? Closing;
 
 		public FloatingTooltipControl(Control control, Direction direction, Point graphLocation, ProductionGraphViewer parent, bool showOverride, bool useControlLocation)
 		{
@@ -46,20 +32,24 @@ namespace Foreman
 
 			parent.ToolTipRenderer.AddToolTip(this, showOverride);
 			parent.Controls.Add(control);
-			Rectangle ttRect = GraphViewer.ToolTipRenderer.getTooltipScreenBounds(parent.GraphToScreen(graphLocation), control.Size, direction);
+			Rectangle ttRect = FloatingTooltipRenderer.GetTooltipScreenBounds(parent.GraphToScreen(graphLocation), control.Size, direction);
 
 			if (!useControlLocation)
 				control.Location = ttRect.Location;
 			control.Focus();
 		}
 
-		public void Dispose()
+		public void Dispose() {
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
 		{
-			Control.Dispose();
-			GraphViewer.ToolTipRenderer.RemoveToolTip(this);
-			if (Closing != null)
-			{
-				Closing.Invoke(this, null);
+			if (disposing) {
+				Control.Dispose();
+				GraphViewer.ToolTipRenderer.RemoveToolTip(this);
+				Closing?.Invoke(this, EventArgs.Empty);
 			}
 		}
 	}

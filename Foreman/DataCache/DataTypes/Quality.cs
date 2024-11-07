@@ -1,60 +1,56 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
+﻿using Newtonsoft.Json;
 
-namespace Foreman
-{
-    public interface Quality : DataObjectBase
-    {
-        Quality NextQuality { get; }
-        Quality PrevQuality { get; }
-        double NextProbability { get; }
+using System.Collections.Generic;
 
-        bool IsMissing { get; }
+namespace Foreman.DataCache.DataTypes {
+	public interface IQuality : IDataObjectBase {
+		IQuality? NextQuality { get; }
+		IQuality? PrevQuality { get; }
+		double NextProbability { get; }
 
-        int Level { get; } //'power' of the quality
-        double BeaconPowerMultiplier { get; }
-        double MiningDrillResourceDrainMultiplier { get; }
+		[JsonProperty("isMissing")]
+		bool IsMissing { get; }
 
-        IReadOnlyCollection<Technology> MyUnlockTechnologies { get; }
-        IReadOnlyList<IReadOnlyList<Item>> MyUnlockSciencePacks { get; }
-    }
+		int Level { get; } //'power' of the quality
+		double BeaconPowerMultiplier { get; }
+		double MiningDrillResourceDrainMultiplier { get; }
 
-    public class QualityPrototype : DataObjectBasePrototype, Quality
-    {
-        public Quality NextQuality { get; internal set; }
-        public Quality PrevQuality { get; internal set; }
-        public double NextProbability { get; set; }
+		IReadOnlyCollection<ITechnology> MyUnlockTechnologies { get; }
+		IReadOnlyList<IReadOnlyList<IItem>> MyUnlockSciencePacks { get; }
+	}
 
-        public bool IsMissing { get; private set; }
+	public class QualityPrototype : DataObjectBasePrototype, IQuality {
+		public IQuality? NextQuality { get; internal set; }
+		public IQuality? PrevQuality { get; internal set; }
+		public double NextProbability { get; set; }
 
-        public int Level { get; internal set; }
-        public double BeaconPowerMultiplier { get; set; }
-        public double MiningDrillResourceDrainMultiplier { get; set; }
+		public bool IsMissing { get; private set; }
 
-        public IReadOnlyCollection<Technology> MyUnlockTechnologies { get { return myUnlockTechnologies; } }
-        public IReadOnlyList<IReadOnlyList<Item>> MyUnlockSciencePacks { get; set; }
+		public int Level { get; internal set; }
+		public double BeaconPowerMultiplier { get; set; }
+		public double MiningDrillResourceDrainMultiplier { get; set; }
 
-        internal HashSet<TechnologyPrototype> myUnlockTechnologies { get; private set; }
+		public IReadOnlyCollection<ITechnology> MyUnlockTechnologies => MyUnlockTechnologiesInternal;
+		public IReadOnlyList<IReadOnlyList<IItem>> MyUnlockSciencePacks { get; set; }
 
-        public QualityPrototype(DataCache dCache, string name, string friendlyName, string order, bool isMissing = false) : base(dCache, name, friendlyName, order)
-        {
-            Enabled = true;
-            IsMissing = isMissing;
+		internal HashSet<TechnologyPrototype> MyUnlockTechnologiesInternal { get; private set; }
 
-            NextProbability = 0;
-            NextQuality = null;
-            PrevQuality = null;
+		public QualityPrototype(DCache dCache, string name, string friendlyName, string order, bool isMissing = false) : base(dCache, name, friendlyName, order) {
+			Enabled = true;
+			IsMissing = isMissing;
 
-            Level = 0;
-            BeaconPowerMultiplier = 1;
-            MiningDrillResourceDrainMultiplier = 1;
+			NextProbability = 0;
+			NextQuality = null;
+			PrevQuality = null;
 
-            myUnlockTechnologies = new HashSet<TechnologyPrototype>();
-            MyUnlockSciencePacks = new List<List<Item>>();
-        }
+			Level = 0;
+			BeaconPowerMultiplier = 1;
+			MiningDrillResourceDrainMultiplier = 1;
 
-        public override string ToString() { return string.Format("Quality T{0}: {1}", Level, Name); }
-    }
+			MyUnlockTechnologiesInternal = [];
+			MyUnlockSciencePacks = new List<List<IItem>>();
+		}
+
+		public override string ToString() { return string.Format("Quality T{0}: {1}", Level, Name); }
+	}
 }

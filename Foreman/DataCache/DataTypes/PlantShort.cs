@@ -1,96 +1,91 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Foreman
-{
-	public class PlantShort : IEquatable<PlantShort>
-	{
+namespace Foreman.DataCache.DataTypes {
+	public class PlantShort : IEquatable<PlantShort> {
 		public string Name { get; private set; }
 		public long PlantID { get; private set; }
-		public bool isMissing { get; private set; }
+		[JsonProperty("isMissing")]
+		public bool IsMissing { get; private set; }
 		public Dictionary<string, double> Products { get; private set; }
 
-		public PlantShort(string name)
-		{
+		public PlantShort(string name) {
 			Name = name;
 			PlantID = -1;
-			isMissing = false;
-			Products = new Dictionary<string, double>();
+			IsMissing = false;
+			Products = [];
 		}
 
-		public PlantShort(PlantProcess plantProcess)
-		{
+		public PlantShort(IPlantProcess plantProcess) {
 			Name = plantProcess.Name;
 			PlantID = plantProcess.PlantID;
-			isMissing = plantProcess.IsMissing;
+			IsMissing = plantProcess.IsMissing;
 
-			Products = new Dictionary<string, double>();
+			Products = [];
 			foreach (var kvp in plantProcess.ProductSet)
 				Products.Add(kvp.Key.Name, kvp.Value);
 		}
 
-		public PlantShort(JToken plantProcess)
-		{
-			Name = (string)plantProcess["Name"];
-			PlantID = (long)plantProcess["PlantID"];
-			isMissing = (bool)plantProcess["isMissing"];
+		public PlantShort(JToken plantProcess) {
+			var Name = plantProcess["Name"]?.Value<string>();
+			var PlantID = plantProcess["PlantID"]?.Value<long>();
+			var isMissing = plantProcess["isMissing"]?.Value<bool>();
+			var products = plantProcess["Products"];
 
-			Products = new Dictionary<string, double>();
-			foreach (JProperty ingredient in plantProcess["Products"])
-				Products.Add((string)ingredient.Name, (double)ingredient.Value);
+			if (Name is null || PlantID is null || isMissing is null || products is null)
+				throw new InvalidOperationException("Name, PlantID, isMissing or products field in JSON is null");
+
+			this.Name = Name!;
+			this.PlantID = (long)PlantID;
+			this.IsMissing = (bool)isMissing;
+
+			Products = products.Where(token => token is JProperty)
+				.Select(token => token as JProperty)
+				.OfType<JProperty>()
+				.Select(ingredient => (ingredient.Name, ingredient.Value.ToObject<double>()))
+				.ToDictionary();
 		}
 
-		public static List<PlantShort> GetSetFromJson(JToken jdata)
-		{
-			List<PlantShort> resultList = new List<PlantShort>();
+		public static List<PlantShort> GetSetFromJson(JToken jdata) {
+			List<PlantShort> resultList = [];
 			foreach (JToken recipe in jdata)
 				resultList.Add(new PlantShort(recipe));
 			return resultList;
 		}
 
-		public bool Equals(PlantShort other)
-		{
-			return this.Name == other.Name &&
-				this.Products.Count == other.Products.Count && this.Products.SequenceEqual(other.Products);
+		public bool Equals(PlantShort? other) {
+			return other is not null &&
+				Name == other.Name &&
+				Products.Count == other.Products.Count && 
+				Products.SequenceEqual(other.Products);
 		}
 
-		public bool Equals(PlantProcess other)
-		{
-			bool similar = this.Name == other.Name && this.Products.Count == other.ProductList.Count;
+		public override bool Equals(object? obj) {
+			return Equals(obj as PlantShort);
+		}
 
-			if (similar)
-			{
-				foreach (Item ingredient in other.ProductList)
-					if (!this.Products.ContainsKey(ingredient.Name) || this.Products[ingredient.Name] != other.ProductSet[ingredient])
-						return false;
-			}
-			return true;
+		public override int GetHashCode() {
+			return HashCode.Combine(Name, PlantID, IsMissing, Products);
 		}
 	}
 
 	public class PlantShortNaInPrComparer : IEqualityComparer<PlantShort> //unlike the default plantshort comparer this one doesnt compare product quantities, just names
 	{
-		public bool Equals(PlantShort x, PlantShort y)
-		{
+		public bool Equals(PlantShort? x, PlantShort? y) {
 			if (x == y)
 				return true;
 
-			if (x.Name != y.Name)
-				return false;
-			if (x.Products.Count != y.Products.Count)
+			if (x is null || y is null || x.Name != y.Name || x.Products.Count != y.Products.Count)
 				return false;
 
-			foreach (string i in x.Products.Keys)
-				if (!y.Products.ContainsKey(i))
-					return false;
-
-			return true;
+			return x.Products.Keys.All(y.Products.ContainsKey);
 		}
 
-		public int GetHashCode(PlantShort obj)
-		{
+		public int GetHashCode(PlantShort obj) {
 			return obj.GetHashCode();
 		}
 

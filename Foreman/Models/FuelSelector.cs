@@ -1,27 +1,23 @@
-﻿using System;
+﻿using Foreman.DataCache.DataTypes;
+
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Foreman
-{
-	public class FuelSelector
-	{
-		public IReadOnlyList<Item> FuelPriority { get { return fuelPriority; } }
-		private List<Item> fuelPriority;
+namespace Foreman.Models {
+	public class FuelSelector {
+		public IReadOnlyList<IItem> FuelPriority { get { return fuelPriority; } }
+		private readonly List<IItem> fuelPriority;
 
-		public void LoadFuelPriority(List<Item> fuelList)
-		{
-			foreach (Item fuel in fuelList)
+		public void LoadFuelPriority(List<IItem> fuelList) {
+			foreach (IItem fuel in fuelList)
 				UseFuel(fuel);
 		}
 
-		public void ClearFuels()
-		{
+		public void ClearFuels() {
 			fuelPriority.Clear();
 		}
 
-		public void UseFuel(Item fuel)
-		{
+		public void UseFuel(IItem? fuel) {
 			if (fuel == null)
 				return;
 
@@ -29,13 +25,12 @@ namespace Foreman
 			fuelPriority.Add(fuel);
 		}
 
-		public Item GetFuel(Assembler assembler)
-		{
-			if (assembler == null || !assembler.IsBurner)
+		public IItem? GetFuel(IAssembler? assembler) {
+			if (assembler is null || !assembler.IsBurner)
 				return null;
 
 			//check for valid fuel in order from highest standards to lowest
-			Item fuel = assembler.Fuels.OrderBy(item => item.Available)
+			IItem? fuel = assembler.Fuels.OrderBy(item => item.Available)
 				.ThenBy(item => item.ProductionRecipes.Any(r => r.Enabled))
 				.ThenBy(item => item.ProductionRecipes.Any(r => r.Available))
 				.ThenBy(item => item.ProductionRecipes.Any(r => r.Assemblers.Any(a => a.Enabled)))
@@ -48,9 +43,8 @@ namespace Foreman
 			return fuel;
 		}
 
-		public FuelSelector()
-		{
-			fuelPriority = new List<Item>();
+		public FuelSelector() {
+			fuelPriority = [];
 		}
 	}
 }

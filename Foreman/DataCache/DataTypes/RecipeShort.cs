@@ -1,97 +1,90 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Foreman
-{
-	public class RecipeShort : IEquatable<RecipeShort>
-	{
+namespace Foreman.DataCache.DataTypes {
+	public class RecipeShort : IEquatable<RecipeShort> {
 		public string Name { get; private set; }
 		public long RecipeID { get; private set; }
-		public bool isMissing { get; private set; }
+		[JsonProperty("isMissing")]
+		public bool IsMissing { get; private set; }
 		public Dictionary<string, double> Ingredients { get; private set; }
 		public Dictionary<string, double> Products { get; private set; }
 
-		public RecipeShort(string name)
-		{
+		public RecipeShort(string name) {
 			Name = name;
 			RecipeID = -1;
-			isMissing = false;
-			Ingredients = new Dictionary<string, double>();
-			Products = new Dictionary<string, double>();
+			IsMissing = false;
+			Ingredients = [];
+			Products = [];
 		}
 
-		public RecipeShort(Recipe recipe)
-		{
+		public RecipeShort(IRecipe recipe) {
 			Name = recipe.Name;
 			RecipeID = recipe.RecipeID;
-			isMissing = recipe.IsMissing;
+			IsMissing = recipe.IsMissing;
 
-			Ingredients = new Dictionary<string, double>();
+			Ingredients = [];
 			foreach (var kvp in recipe.IngredientSet)
 				Ingredients.Add(kvp.Key.Name, kvp.Value);
-			Products = new Dictionary<string, double>();
+			Products = [];
 			foreach (var kvp in recipe.ProductSet)
 				Products.Add(kvp.Key.Name, kvp.Value);
 		}
 
-		public RecipeShort(JToken recipe)
-		{
-			Name = (string)recipe["Name"];
-			RecipeID = (long)recipe["RecipeID"];
-			isMissing = (bool)recipe["isMissing"];
+		public RecipeShort(JToken recipe) {
+			var Name = recipe["Name"]?.Value<string>();
+			var RecipeID = recipe["RecipeID"]?.Value<long>();
+			var isMissing = recipe["isMissing"]?.Value<bool>();
+			var ingredients = recipe["Ingredients"];
+			var products = recipe["Products"];
 
-			Ingredients = new Dictionary<string, double>();
-			foreach (JProperty ingredient in recipe["Ingredients"])
-				Ingredients.Add((string)ingredient.Name, (double)ingredient.Value);
+			if (Name is null || RecipeID is null || isMissing is null || ingredients is null || products is null)
+				throw new InvalidOperationException("Name, RecipeID, isMissing, ingredients or products field in JSON is null");
+			this.Name = Name;
+			this.RecipeID = (long)RecipeID;
+			this.IsMissing = (bool)isMissing;
 
-			Products = new Dictionary<string, double>();
-			foreach (JProperty ingredient in recipe["Products"])
-				Products.Add((string)ingredient.Name, (double)ingredient.Value);
+			Ingredients = ingredients.Where(token => token is JProperty)
+				.Select(token => token as JProperty)
+				.OfType<JProperty>()
+				.Select(ingredient => (ingredient.Name, ingredient.Value.ToObject<double>()))
+				.ToDictionary();
+			Products = products.Where(token => token is JProperty)
+				.Select(token => token as JProperty)
+				.OfType<JProperty>()
+				.Select(ingredient => (ingredient.Name, ingredient.Value.ToObject<double>()))
+				.ToDictionary();
 		}
 
-		public static List<RecipeShort> GetSetFromJson(JToken jdata)
-		{
-			List<RecipeShort> resultList = new List<RecipeShort>();
+		public static List<RecipeShort> GetSetFromJson(JToken jdata) {
+			List<RecipeShort> resultList = [];
 			foreach (JToken recipe in jdata)
 				resultList.Add(new RecipeShort(recipe));
 			return resultList;
 		}
 
-		public bool Equals(RecipeShort other)
-		{
-			return this.Name == other.Name &&
-				this.Ingredients.Count == other.Ingredients.Count && this.Ingredients.SequenceEqual(other.Ingredients) &&
-				this.Products.Count == other.Products.Count && this.Products.SequenceEqual(other.Products);
+		public bool Equals(RecipeShort? other) {
+			return other is not null && Name == other.Name &&
+				Ingredients.Count == other.Ingredients.Count && Ingredients.SequenceEqual(other.Ingredients) &&
+				Products.Count == other.Products.Count && Products.SequenceEqual(other.Products);
 		}
 
-		public bool Equals(Recipe other)
-		{
-			bool similar = this.Name == other.Name &&
-				this.Ingredients.Count == other.IngredientList.Count && this.Products.Count == other.ProductList.Count;
+		public override bool Equals(object? obj) => Equals(obj as RecipeShort);
 
-			if (similar)
-			{
-				foreach (Item ingredient in other.IngredientList)
-					if (!this.Ingredients.ContainsKey(ingredient.Name) || this.Ingredients[ingredient.Name] != other.IngredientSet[ingredient])
-						return false;
-				foreach (Item ingredient in other.ProductList)
-					if (!this.Products.ContainsKey(ingredient.Name) || this.Products[ingredient.Name] != other.ProductSet[ingredient])
-						return false;
-			}
-			return true;
-		}
+		public override int GetHashCode() => HashCode.Combine(Name, RecipeID, IsMissing, Ingredients, Products);
 	}
 
 	public class RecipeShortNaInPrComparer : IEqualityComparer<RecipeShort> //unlike the default recipeshort comparer this one doesnt compare ingredient & product quantities, just names
 	{
-		public bool Equals(RecipeShort x, RecipeShort y)
-		{
+		public bool Equals(RecipeShort? x, RecipeShort? y) {
 			if (x == y)
 				return true;
 
-			if (x.Name != y.Name)
+			if (x is null || y is null || x.Name != y.Name)
 				return false;
 			if (x.Ingredients.Count != y.Ingredients.Count)
 				return false;
@@ -108,10 +101,8 @@ namespace Foreman
 			return true;
 		}
 
-		public int GetHashCode(RecipeShort obj)
-		{
+		public int GetHashCode(RecipeShort obj) {
 			return obj.GetHashCode();
 		}
-
 	}
 }

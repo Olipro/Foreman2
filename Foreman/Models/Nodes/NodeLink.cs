@@ -1,12 +1,8 @@
 ﻿using Newtonsoft.Json;
-using System;
 
-namespace Foreman
-{
-	[Serializable]
+namespace Foreman.Models.Nodes {
 	[JsonObject(MemberSerialization.OptIn)]
-	public class NodeLink
-	{
+	public class NodeLink {
 		private readonly NodeLinkController controller;
 		public NodeLinkController Controller { get { return controller; } }
 		public ReadOnlyNodeLink ReadOnlyLink { get; protected set; }
@@ -25,13 +21,12 @@ namespace Foreman
 		public int SupplierID => SupplierNode.NodeID;
 		[JsonProperty]
 		public int ConsumerID => ConsumerNode.NodeID;
-		[JsonProperty("Item")]
-		public string jsonItem => Item.Item.Name;
+		[JsonProperty(nameof(Item))]
+		public string JsonItem => Item.Item?.Name ?? "<ERROR>";
 		[JsonProperty]
-		public string Quality => Item.Quality.Name;
+		public string Quality => Item.Quality?.Name ?? "";
 
-		internal NodeLink(ProductionGraph myGraph, BaseNode supplier, BaseNode consumer, ItemQualityPair item)
-		{
+		internal NodeLink(ProductionGraph myGraph, BaseNode supplier, BaseNode consumer, ItemQualityPair item) {
 			MyGraph = myGraph;
 			SupplierNode = supplier;
 			ConsumerNode = consumer;
@@ -43,11 +38,10 @@ namespace Foreman
 			IsValid = LinkChecker.IsPossibleConnection(Item, SupplierNode.ReadOnlyNode, ConsumerNode.ReadOnlyNode); //only need to check once -> item & recipe temperatures cant change.
 		}
 
-		public override string ToString() => string.Format("NodeLink for {0} ({1}) connecting {2} -> {3}", Item.Item.Name, Item.Quality.Name, SupplierNode.NodeID, ConsumerNode.NodeID);
+		public override string ToString() => string.Format("NodeLink for {0} ({1}) connecting {2} -> {3}", Item.Item?.Name, Item.Quality?.Name, SupplierNode.NodeID, ConsumerNode.NodeID);
 	}
 
-	public class ReadOnlyNodeLink
-	{
+	public class ReadOnlyNodeLink(NodeLink link) {
 		public ReadOnlyBaseNode Supplier => MyLink.SupplierNode.ReadOnlyNode;
 		public ReadOnlyBaseNode Consumer => MyLink.ConsumerNode.ReadOnlyNode;
 
@@ -58,23 +52,19 @@ namespace Foreman
 		public double Throughput => MyLink.Throughput;
 		public bool IsValid => MyLink.IsValid;
 
-		private readonly NodeLink MyLink;
-
-		public ReadOnlyNodeLink(NodeLink link) { MyLink = link; }
+		private readonly NodeLink MyLink = link;
 
 		public override string ToString() { return "RO: " + MyLink.ToString(); }
 	}
 
-	public class NodeLinkController
-	{
+	public class NodeLinkController {
 		private readonly NodeLink MyLink;
 
 		protected NodeLinkController(NodeLink link) { MyLink = link; }
 
-		public static NodeLinkController GetController(NodeLink link)
-		{
+		public static NodeLinkController GetController(NodeLink link) {
 			if (link.Controller != null)
-				return (NodeLinkController)link.Controller;
+				return link.Controller;
 			return new NodeLinkController(link);
 		}
 

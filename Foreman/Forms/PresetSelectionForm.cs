@@ -1,20 +1,15 @@
-﻿using System;
+﻿using Foreman.DataCache;
+
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Foreman
-{
+namespace Foreman {
 	public partial class PresetSelectionForm : Form
 	{
-		public Preset ChosenPreset;
+		public Preset? ChosenPreset;
 
-		private List<PresetErrorPackage> PresetErrors;
+		private readonly List<PresetErrorPackage> PresetErrors;
 
 		public PresetSelectionForm(List<PresetErrorPackage> presetErrors)
 		{
@@ -33,19 +28,19 @@ namespace Foreman
 			foreach (PresetErrorPackage pePackage in presetErrors)
 			{
 				float[] compatibility =
-				{
+				[
 					((float)(pePackage.RequiredMods.Count - pePackage.MissingMods.Count - pePackage.WrongVersionMods.Count - pePackage.AddedMods.Count) / pePackage.RequiredMods.Count),
 					((float)(pePackage.RequiredItems.Count - pePackage.MissingItems.Count) / pePackage.RequiredItems.Count),
 					((float)(pePackage.RequiredRecipes.Count - pePackage.MissingRecipes.Count - pePackage.IncorrectRecipes.Count) / pePackage.RequiredRecipes.Count)
-				};
+				];
 
-				ListViewItem presetItem = new ListViewItem(new string[]
-				{
+				ListViewItem presetItem = new(
+				[
 					pePackage.Preset.Name,
 					compatibility[0].ToString("%00"),
 					compatibility[1].ToString("%00"),
 					compatibility[2].ToString("%00")
-				});
+				]);
 				PresetSelectionListView.Items.Add(presetItem);
 				presetItem.ToolTipText =
 					string.Format("Mods:\n") +
@@ -63,7 +58,7 @@ namespace Foreman
 			}
 		}
 
-		private void ConfirmationButton_Click(object sender, EventArgs e)
+		private void ConfirmationButton_Click(object? sender, EventArgs e)
 		{
 			if (PresetSelectionListView.SelectedIndices.Count > 0)
 			{
@@ -73,14 +68,14 @@ namespace Foreman
 			}
 		}
 
-		private void CancellingButton_Click(object sender, EventArgs e)
+		private void CancellingButton_Click(object? sender, EventArgs e)
 		{
 			ChosenPreset = null;
 			this.DialogResult = DialogResult.Cancel;
 			this.Close();
 		}
 
-		private void PresetSelectionListView_MouseDoubleClick(object sender, MouseEventArgs e)
+		private void PresetSelectionListView_MouseDoubleClick(object? sender, MouseEventArgs e)
 		{
 			if (PresetSelectionListView.SelectedIndices.Count > 0)
 			{

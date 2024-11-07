@@ -1,24 +1,24 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Windows.Forms;
 
 namespace Foreman
 {
-	class NativeMethods
+	partial class NativeMethods
 	{
 		private const int LVM_FIRST = 0x1000;
 		private const int LVM_SETITEMSTATE = LVM_FIRST + 43;
 
 		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-		public struct LVITEM
+		public unsafe struct LVITEM
 		{
 			public int mask;
 			public int iItem;
 			public int iSubItem;
 			public int state;
 			public int stateMask;
-			[MarshalAs(UnmanagedType.LPTStr)]
-			public string pszText;
+			public ushort* pszText;
 			public int cchTextMax;
 			public int iImage;
 			public IntPtr lParam;
@@ -27,9 +27,11 @@ namespace Foreman
 			public int cColumns;
 			public IntPtr puColumns;
 		};
+		[LibraryImport("user32.dll")]
+		private static partial IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wp, IntPtr lp);
 
-		[DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet.Auto)]
-		public static extern IntPtr SendMessageLVItem(IntPtr hWnd, int msg, int wParam, ref LVITEM lvi);
+		[LibraryImport("user32.dll", EntryPoint = "SendMessage")]
+		public static partial IntPtr SendMessageLVItem(IntPtr hWnd, int msg, int wParam, ref LVITEM lvi);
 
 		[Flags]
 		public enum DwmWindowAttribute : uint {
@@ -60,8 +62,8 @@ namespace Foreman
 			DWMWA_LAST
 		}
 
-		[DllImport("dwmapi.dll")]
-		public static extern int DwmSetWindowAttribute(IntPtr hwnd, DwmWindowAttribute dwAttribute, ref int pvAttribute, int cbAttribute);
+		[LibraryImport("dwmapi.dll")]
+		public static partial int DwmSetWindowAttribute(IntPtr hwnd, DwmWindowAttribute dwAttribute, ref int pvAttribute, int cbAttribute);
 
 		/// <summary>
 		/// Select all rows on the given listview
@@ -90,9 +92,10 @@ namespace Foreman
 		/// <param name="value">The value to be set</param>
 		public static void SetItemState(ListView list, int itemIndex, int mask, int value)
 		{
-			LVITEM lvItem = new LVITEM();
-			lvItem.stateMask = mask;
-			lvItem.state = value;
+			LVITEM lvItem = new() {
+				stateMask = mask,
+				state = value
+			};
 			SendMessageLVItem(list.Handle, LVM_SETITEMSTATE, itemIndex, ref lvItem);
 		}
 	}

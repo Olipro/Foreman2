@@ -1,21 +1,23 @@
-﻿using System;
+﻿using Foreman.DataCache;
+using Foreman.DataCache.DataTypes;
+using Foreman.Models;
+
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace Foreman
-{
+namespace Foreman {
 	public partial class SettingsForm : Form
 	{
-		public class SettingsFormOptions
-		{
-			public DataCache DCache { get; private set; }
+		public class SettingsFormOptions(DCache cache) {
+			public DCache DCache { get; private set; } = cache;
 
-			public List<Preset> Presets;
-			public Preset SelectedPreset;
-			public bool RequireReload;
+			public List<Preset> Presets = [];
+			public required Preset SelectedPreset;
+			public bool RequireReload = false;
 
 			public uint QualitySteps;
 
@@ -51,15 +53,7 @@ namespace Foreman
 			public double Solver_PullConsumerNodesPower;
 			public bool Solver_PullConsumerNodes;
 
-			public HashSet<DataObjectBase> EnabledObjects;
-
-			public SettingsFormOptions(DataCache cache)
-			{
-				DCache = cache;
-				Presets = new List<Preset>();
-				EnabledObjects = new HashSet<DataObjectBase>();
-				RequireReload = false;
-			}
+			public HashSet<IDataObjectBase> EnabledObjects = [];
 		}
 
 		private static readonly Color AvailableObjectColor = Color.White;
@@ -67,24 +61,24 @@ namespace Foreman
 
 		public SettingsFormOptions Options;
 
-		private List<ListViewItem> unfilteredAssemblerList;
-		private List<ListViewItem> unfilteredMinerList;
-		private List<ListViewItem> unfilteredPowerList;
-		private List<ListViewItem> unfilteredBeaconList;
-		private List<ListViewItem> unfilteredModuleList;
-		private List<ListViewItem> unfilteredRecipeList;
-		private List<ListViewItem> unfilteredQualityList;
+		private readonly List<ListViewItem> unfilteredAssemblerList;
+		private readonly List<ListViewItem> unfilteredMinerList;
+		private readonly List<ListViewItem> unfilteredPowerList;
+		private readonly List<ListViewItem> unfilteredBeaconList;
+		private readonly List<ListViewItem> unfilteredModuleList;
+		private readonly List<ListViewItem> unfilteredRecipeList;
+		private readonly List<ListViewItem> unfilteredQualityList;
 
-		private List<ListViewItem> filteredAssemblerList;
-		private List<ListViewItem> filteredMinerList;
-		private List<ListViewItem> filteredPowerList;
-		private List<ListViewItem> filteredBeaconList;
-		private List<ListViewItem> filteredModuleList;
-		private List<ListViewItem> filteredRecipeList;
-		private List<ListViewItem> filteredQualityList;
+		private readonly List<ListViewItem> filteredAssemblerList;
+		private readonly List<ListViewItem> filteredMinerList;
+		private readonly List<ListViewItem> filteredPowerList;
+		private readonly List<ListViewItem> filteredBeaconList;
+		private readonly List<ListViewItem> filteredModuleList;
+		private readonly List<ListViewItem> filteredRecipeList;
+		private readonly List<ListViewItem> filteredQualityList;
 
-		private MouseHoverDetector mhDetector;
-		private MainForm mainForm;
+		private readonly MouseHoverDetector mhDetector;
+		private readonly MainForm mainForm;
 
 		public SettingsForm(SettingsFormOptions options, MainForm mainForm)
 		{
@@ -105,21 +99,21 @@ namespace Foreman
 			RecipeListView.Columns[0].Width = RecipeListView.Width - 32;
 			QualityListView.Columns[0].Width = QualityListView.Width - 32;
 
-			unfilteredAssemblerList = new List<ListViewItem>();
-			unfilteredMinerList = new List<ListViewItem>();
-			unfilteredPowerList = new List<ListViewItem>();
-			unfilteredBeaconList = new List<ListViewItem>();
-			unfilteredModuleList = new List<ListViewItem>();
-			unfilteredRecipeList = new List<ListViewItem>();
-			unfilteredQualityList = new List<ListViewItem>();
+			unfilteredAssemblerList = [];
+			unfilteredMinerList = [];
+			unfilteredPowerList = [];
+			unfilteredBeaconList = [];
+			unfilteredModuleList = [];
+			unfilteredRecipeList = [];
+			unfilteredQualityList = [];
 
-			filteredAssemblerList = new List<ListViewItem>();
-			filteredMinerList = new List<ListViewItem>();
-			filteredPowerList = new List<ListViewItem>();
-			filteredBeaconList = new List<ListViewItem>();
-			filteredModuleList = new List<ListViewItem>();
-			filteredRecipeList = new List<ListViewItem>();
-			filteredQualityList = new List<ListViewItem>();
+			filteredAssemblerList = [];
+			filteredMinerList = [];
+			filteredPowerList = [];
+			filteredBeaconList = [];
+			filteredModuleList = [];
+			filteredRecipeList = [];
+			filteredQualityList = [];
 
 			SelectPresetMenuItem.Click += SelectPresetMenuItem_Click;
 			DeletePresetMenuItem.Click += DeletePresetMenuItem_Click;
@@ -128,7 +122,7 @@ namespace Foreman
 			mhDetector.Add(RecipeListView, RecipeListView_StartHover, RecipeListView_EndHover);
 
 			CurrentPresetLabel.Text = Options.SelectedPreset.Name;
-			PresetListBox.Items.AddRange(Options.Presets.ToArray());
+			PresetListBox.Items.AddRange([.. Options.Presets]);
 			PresetListBox.Items.RemoveAt(0); //0 is the currently active preset.
 
 			//settings
@@ -167,17 +161,10 @@ namespace Foreman
 					break;
 			}
 
-			switch(Options.DefaultNodeDirection)
-			{
-				case NodeDirection.Down:
-					NodeDirectionDropDown.SelectedIndex = 1;
-					break;
-				case NodeDirection.Up:
-				default:
-					NodeDirectionDropDown.SelectedIndex = 0;
-					break;
-			}
-
+			NodeDirectionDropDown.SelectedIndex = Options.DefaultNodeDirection switch {
+				NodeDirection.Down => 1,
+				_ => 0,
+			};
 			SmartNodeDirectionCheckBox.Checked = Options.SmartNodeDirection;
 
 			AssemblerSelectorStyleDropDown.Items.AddRange(AssemblerSelector.StyleNames);
@@ -200,9 +187,7 @@ namespace Foreman
 
 		private void UpdateModList()
 		{
-			Preset selectedPreset = (Preset)PresetListBox.SelectedItem;
-			if (selectedPreset == null)
-				selectedPreset = Options.SelectedPreset;
+			Preset selectedPreset = PresetListBox.SelectedItem as Preset ?? Options.SelectedPreset;
 
 			PresetInfo presetInfo = PresetProcessor.ReadPresetInfo(selectedPreset);
 			ModSelectionBox.Items.Clear();
@@ -210,7 +195,7 @@ namespace Foreman
 			{
 				List<string> modList = presetInfo.ModList.Select(kvp => kvp.Key + "_" + kvp.Value).ToList();
 				modList.Sort();
-				ModSelectionBox.Items.AddRange(modList.ToArray());
+				ModSelectionBox.Items.AddRange([.. modList]);
 			}
 			RecipeDifficultyLabel.Text = presetInfo.ExpensiveRecipes ? "Expensive" : "Normal";
 			TechnologyDifficultyLabel.Text = presetInfo.ExpensiveTechnology ? "Expensive" : "Normal";
@@ -220,7 +205,7 @@ namespace Foreman
 		private void LoadUnfilteredLists()
 		{
 			IconList.Images.Clear();
-			IconList.Images.Add(DataCache.UnknownIcon);
+			IconList.Images.Add(IconCache.GetUnknownIcon());
 
 			LoadUnfilteredList(Options.DCache.Assemblers.Values.Where(a => a.EntityType == EntityType.Assembler), unfilteredAssemblerList);
 			LoadUnfilteredList(Options.DCache.Assemblers.Values.Where(a => a.EntityType == EntityType.Miner || a.EntityType == EntityType.OffshorePump), unfilteredMinerList);
@@ -233,17 +218,17 @@ namespace Foreman
 			UpdateFilteredLists();
 		}
 
-		private void LoadUnfilteredList(IEnumerable<DataObjectBase> origin, List<ListViewItem> lviList)
+		private void LoadUnfilteredList(IEnumerable<IDataObjectBase> origin, List<ListViewItem> lviList)
 		{
-			IOrderedEnumerable<DataObjectBase> orderedList;
-			if (origin is IEnumerable<Quality>)
+			IOrderedEnumerable<IDataObjectBase> orderedList;
+			if (origin is IEnumerable<IQuality>)
 				orderedList = origin.OrderByDescending(a => a.Available).ThenBy(a => a);
 			else
 				orderedList = origin.OrderByDescending(a => a.Available).ThenBy(a => a.FriendlyName);
 
-            foreach (DataObjectBase dObject in orderedList)
+            foreach (IDataObjectBase dObject in orderedList)
 			{
-				ListViewItem lvItem = new ListViewItem();
+				ListViewItem lvItem = new();
 				if (dObject.Icon != null)
 				{
 					IconList.Images.Add(dObject.Icon);
@@ -283,7 +268,7 @@ namespace Foreman
 			filteredList.Clear();
 
 			foreach (ListViewItem lvItem in unfilteredList)
-				if ((showUnavailables || ((DataObjectBase)lvItem.Tag).Available) && (string.IsNullOrEmpty(filterString) || lvItem.Text.ToLower().Contains(filterString)))
+				if ((showUnavailables || (lvItem.Tag is IDataObjectBase idob && idob.Available)) && (string.IsNullOrEmpty(filterString) || lvItem.Text.Contains(filterString, StringComparison.CurrentCultureIgnoreCase)))
 					filteredList.Add(lvItem);
 
 
@@ -292,10 +277,10 @@ namespace Foreman
 		}
 
 		//PRESETS LIST------------------------------------------------------------------------------------------
-		private void EnableSelectionBox_Enter(object sender, EventArgs e) { PresetListBox.SelectedItem = null; }
-		private void CurrentPresetLabel_Click(object sender, EventArgs e) { PresetListBox.SelectedItem = null; }
+		private void EnableSelectionBox_Enter(object? sender, EventArgs e) { PresetListBox.SelectedItem = null; }
+		private void CurrentPresetLabel_Click(object? sender, EventArgs e) { PresetListBox.SelectedItem = null; }
 
-		private void PresetListBox_SelectedValueChanged(object sender, EventArgs e)
+		private void PresetListBox_SelectedValueChanged(object? sender, EventArgs e)
 		{
 			UpdateModList();
 			if (PresetListBox.SelectedItem == null)
@@ -304,7 +289,7 @@ namespace Foreman
 				CurrentPresetLabel.Font = new Font(CurrentPresetLabel.Font, FontStyle.Regular);
 		}
 
-		private void PresetListBox_MouseDown(object sender, MouseEventArgs e)
+		private void PresetListBox_MouseDown(object? sender, MouseEventArgs e)
 		{
 			if (e.Button != MouseButtons.Right) return;
 
@@ -343,7 +328,7 @@ namespace Foreman
 				PresetMenuStrip.Visible = false;
 		}
 
-		private void PresetListBox_MouseDoubleClick(object sender, MouseEventArgs e)
+		private void PresetListBox_MouseDoubleClick(object? sender, MouseEventArgs e)
 		{
 			var index = PresetListBox.IndexFromPoint(e.Location);
 			if (index != ListBox.NoMatches)
@@ -356,16 +341,15 @@ namespace Foreman
 			}
 		}
 
-		private void DeletePresetMenuItem_Click(object sender, EventArgs e)
+		private void DeletePresetMenuItem_Click(object? sender, EventArgs e)
 		{
-			Preset selectedPreset = (Preset)PresetListBox.SelectedItem;
-			if (!selectedPreset.IsCurrentlySelected && !selectedPreset.IsDefaultPreset) //safety check - should always pass
+			if (PresetListBox.SelectedItem is Preset selectedPreset && !selectedPreset.IsCurrentlySelected && !selectedPreset.IsDefaultPreset) //safety check - should always pass
 			{
 				if (MessageBox.Show("Are you sure you wish to delete the \"" + selectedPreset.Name + "\" preset? This is irreversible.", "Confirm Delete", MessageBoxButtons.YesNo) == DialogResult.Yes)
 				{
-					string jsonPath = Path.Combine(new string[] { Application.StartupPath, "Presets", selectedPreset.Name + ".pjson" });
-					string customjsonPath = Path.Combine(new string[] { Application.StartupPath, "Presets", selectedPreset.Name + ".json" });
-					string iconPath = Path.Combine(new string[] { Application.StartupPath, "Presets", selectedPreset.Name + ".dat" });
+					string jsonPath = Path.Combine([Application.StartupPath, "Presets", selectedPreset.Name + ".pjson"]);
+					string customjsonPath = Path.Combine([Application.StartupPath, "Presets", selectedPreset.Name + ".json"]);
+					string iconPath = Path.Combine([Application.StartupPath, "Presets", selectedPreset.Name + ".dat"]);
 
 					if (File.Exists(jsonPath))
 						File.Delete(jsonPath);
@@ -380,119 +364,135 @@ namespace Foreman
 			}
 		}
 
-		private void SelectPresetMenuItem_Click(object sender, EventArgs e)
+		private void SelectPresetMenuItem_Click(object? sender, EventArgs e)
 		{
-			Options.SelectedPreset = (Preset)PresetListBox.SelectedItem;
+			if (PresetListBox.SelectedItem is not Preset preset)
+				return;
+			Options.SelectedPreset = preset;
 			UpdateSettings();
 			DialogResult = DialogResult.OK;
 			this.Close();
 		}
 
-		private void Filters_Changed(object sender, EventArgs e)
+		private void Filters_Changed(object? sender, EventArgs e)
 		{
 			UpdateFilteredLists();
 		}
 
 		//LIST VIEWS------------------------------------------------------------------------------------------
 
-		private void ListView_KeyDown(object sender, KeyEventArgs e)
+		private void ListView_KeyDown(object? sender, KeyEventArgs e)
 		{
-			if (e.KeyCode == Keys.A && (e.Modifiers & Keys.Control) != 0)
-				NativeMethods.SelectAllItems(sender as ListView);
+			if (e.KeyCode == Keys.A && (e.Modifiers & Keys.Control) != 0 && sender is ListView lv)
+				NativeMethods.SelectAllItems(lv);
 		}
 
-		private void ListView_MouseClick(object sender, MouseEventArgs e)
+		private void ListView_MouseClick(object? sender, MouseEventArgs e)
 		{
-			ListViewItem lvi = (sender as ListView).GetItemAt(e.X, e.Y);
-			if (lvi != null && e.X < (lvi.Bounds.Left + 16))
+			if (sender is not ListView lv)
+				return;
+			ListViewItem? lvi = lv.GetItemAt(e.X, e.Y);
+			if (lvi is not null && e.X < (lvi.Bounds.Left + 16))
 			{
 				if (lvi.Selected) //check all selected
 				{
 					bool setCheck = !lvi.Checked;
-					foreach (int index in (sender as ListView).SelectedIndices)
+					foreach (int index in lv.SelectedIndices)
 					{
-						lvi = (sender as ListView).Items[index];
+						lvi = lv.Items[index];
 						lvi.Checked = setCheck;
+						if (lvi.Tag is not IDataObjectBase idob)
+							continue;
 						if (lvi.Checked)
-							Options.EnabledObjects.Add((DataObjectBase)lvi.Tag);
+							Options.EnabledObjects.Add(idob);
 						else
-							Options.EnabledObjects.Remove((DataObjectBase)lvi.Tag);
+							Options.EnabledObjects.Remove(idob);
 					}
 				}
 				else
 				{
 					lvi.Checked = !lvi.Checked;
+					if (lvi.Tag is not IDataObjectBase idob)
+						return;
 					if (lvi.Checked)
-						Options.EnabledObjects.Add((DataObjectBase)lvi.Tag);
+						Options.EnabledObjects.Add(idob);
 					else
-						Options.EnabledObjects.Remove((DataObjectBase)lvi.Tag);
+						Options.EnabledObjects.Remove(idob);
 				}
-				(sender as ListView).Invalidate();
+				lv.Invalidate();
 			}
 		}
 
-		private void ListView_MouseDoubleClick(object sender, MouseEventArgs e)
+		private void ListView_MouseDoubleClick(object? sender, MouseEventArgs e)
 		{
-			ListViewItem lvi = (sender as ListView).GetItemAt(e.X, e.Y);
+			if (sender is not ListView lv)
+				return;
+			ListViewItem? lvi = lv.GetItemAt(e.X, e.Y);
 			if (lvi != null && e.X < (lvi.Bounds.Left + 16))
 			{
 				if (lvi.Selected) //check all selected
 				{
 					bool setCheck = lvi.Checked;
-					foreach (int index in (sender as ListView).SelectedIndices)
+					foreach (int index in lv.SelectedIndices)
 					{
-						lvi = (sender as ListView).Items[index];
+						lvi = lv.Items[index];
 						lvi.Checked = setCheck;
+						if (lvi.Tag is not IDataObjectBase idob)
+							continue;
 						if (lvi.Checked)
-							Options.EnabledObjects.Add((DataObjectBase)lvi.Tag);
+							Options.EnabledObjects.Add(idob);
 						else
-							Options.EnabledObjects.Remove((DataObjectBase)lvi.Tag);
+							Options.EnabledObjects.Remove(idob);
 					}
 				}
 				else
 				{
-					//lvi.Checked = lvi.Checked;
+					if (lvi.Tag is not IDataObjectBase idob)
+						return;
 					if (lvi.Checked)
-						Options.EnabledObjects.Add((DataObjectBase)lvi.Tag);
+						Options.EnabledObjects.Add(idob);
 					else
-						Options.EnabledObjects.Remove((DataObjectBase)lvi.Tag);
+						Options.EnabledObjects.Remove(idob);
 				}
-				(sender as ListView).Invalidate();
+				lv.Invalidate();
 			}
 		}
 
-		private void AssemblerListView_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredAssemblerList[e.ItemIndex]; }
-		private void MinerListView_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredMinerList[e.ItemIndex]; }
-		private void PowerListView_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredPowerList[e.ItemIndex]; }
-		private void BeaconListView_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredBeaconList[e.ItemIndex]; }
-		private void ModuleListView_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredModuleList[e.ItemIndex]; }
-		private void RecipeListView_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredRecipeList[e.ItemIndex]; }
-		private void QualityListView_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e) {  e.Item = filteredQualityList[e.ItemIndex]; }
+		private void AssemblerListView_RetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredAssemblerList[e.ItemIndex]; }
+		private void MinerListView_RetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredMinerList[e.ItemIndex]; }
+		private void PowerListView_RetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredPowerList[e.ItemIndex]; }
+		private void BeaconListView_RetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredBeaconList[e.ItemIndex]; }
+		private void ModuleListView_RetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredModuleList[e.ItemIndex]; }
+		private void RecipeListView_RetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e) { e.Item = filteredRecipeList[e.ItemIndex]; }
+		private void QualityListView_RetrieveVirtualItem(object? sender, RetrieveVirtualItemEventArgs e) {  e.Item = filteredQualityList[e.ItemIndex]; }
 
-		private void RecipeListView_StartHover(object sender, MouseEventArgs e)
+		private void RecipeListView_StartHover(object? sender, MouseEventArgs e)
 		{
-			ListViewItem lvi = ((ListView)sender).GetItemAt(e.Location.X, e.Location.Y);
-			Point location = new Point(e.X + 15, e.Y);
-			if (lvi != null)
+			if (sender is not ListView lv)
+				return;
+			ListViewItem? lvi = lv.GetItemAt(e.Location.X, e.Location.Y);
+			Point location = new(e.X + 15, e.Y);
+			if (lvi is not null && lvi.Tag is IRecipe recipe)
 			{
-				RecipeToolTip.SetRecipe(lvi.Tag as Recipe);
-				RecipeToolTip.Show((Control)sender, location);
+				RecipeToolTip.SetRecipe(recipe);
+				RecipeToolTip.Show(lv, location);
 			}
 		}
-		private void RecipeListView_EndHover(object sender, EventArgs e)
+		private void RecipeListView_EndHover(object? sender, EventArgs e)
 		{
-			RecipeToolTip.Hide((Control)sender);
+			if (sender is Control ctrl)
+			RecipeToolTip.Hide(ctrl);
 		}
 
 		//CONFIRM / RELOAD / CANCEL------------------------------------------------------------------------------------------
-		private void ConfirmButton_Click(object sender, EventArgs e)
+		private void ConfirmButton_Click(object? sender, EventArgs e)
 		{
 			UpdateSettings();
 			DialogResult = DialogResult.OK;
 			this.Close();
 		}
 
-		private void CancelButton_Click(object sender, EventArgs e)
+		private void CancelButton_Click(object? sender, EventArgs e)
 		{
 			DialogResult = DialogResult.Cancel;
 			this.Close();
@@ -545,48 +545,43 @@ namespace Foreman
 
 		//PRESET FORMS (Import / compare)------------------------------------------------------------------------------------------
 
-		private void ImportPresetButton_Click(object sender, EventArgs e)
+		private void ImportPresetButton_Click(object? sender, EventArgs e)
 		{
-			using (PresetImportForm form = new PresetImportForm())
+			using PresetImportForm form = new();
+			form.StartPosition = FormStartPosition.Manual;
+			form.Left = this.Left + 250;
+			form.Top = this.Top + 50;
+			DialogResult result = form.ShowDialog();
+
+			if (form.ImportStarted)
+				GC.Collect(); //we just processed a new preset (either fully or cancelled) - this required the opening of (potentially) alot of zip files and processing of a ton of bitmaps that are now stuck in garbate. In large mod packs like A&B this could clear out 2GB+ of memory.
+
+			if (result == DialogResult.OK && !string.IsNullOrEmpty(form.NewPresetName)) //we have added a new preset
 			{
-				form.StartPosition = FormStartPosition.Manual;
-				form.Left = this.Left + 250;
-				form.Top = this.Top + 50;
-				DialogResult result = form.ShowDialog();
+				Preset? newPreset = Options.Presets.FirstOrDefault(p => p.Name.Equals(form.NewPresetName, StringComparison.CurrentCultureIgnoreCase)); //extra check just in case we were overwriting
+				if (newPreset == null) {
+					newPreset = new Preset(form.NewPresetName, false, false);
+					Options.Presets.Add(newPreset);
+					PresetListBox.Items.Add(newPreset);
+				}
 
-				if (form.ImportStarted)
-					GC.Collect(); //we just processed a new preset (either fully or cancelled) - this required the opening of (potentially) alot of zip files and processing of a ton of bitmaps that are now stuck in garbate. In large mod packs like A&B this could clear out 2GB+ of memory.
 
-				if (result == DialogResult.OK && !string.IsNullOrEmpty(form.NewPresetName)) //we have added a new preset
+				if (newPreset == Options.Presets[0]) //we have overwritten the currently active preset. Must force a reload
 				{
-					Preset newPreset = Options.Presets.FirstOrDefault(p => p.Name.ToLower() == form.NewPresetName.ToLower()); //extra check just in case we were overwriting
-					if (newPreset == null)
-					{
-						newPreset = new Preset(form.NewPresetName, false, false);
-						Options.Presets.Add(newPreset);
-						PresetListBox.Items.Add(newPreset);
-					}
-
-
-					if(newPreset == Options.Presets[0]) //we have overwritten the currently active preset. Must force a reload
-					{
-						Options.RequireReload = true;
-						UpdateSettings();
-						DialogResult = DialogResult.OK;
-						this.Close();
-					}
-					else if (MessageBox.Show("Preset import complete! Do you wish to switch to the new preset?", "", MessageBoxButtons.YesNo) == DialogResult.Yes)
-					{
-						Options.SelectedPreset = newPreset;
-						UpdateSettings();
-						DialogResult = DialogResult.OK;
-						this.Close();
-					}
+					Options.RequireReload = true;
+					UpdateSettings();
+					DialogResult = DialogResult.OK;
+					this.Close();
+				} else if (MessageBox.Show("Preset import complete! Do you wish to switch to the new preset?", "", MessageBoxButtons.YesNo) == DialogResult.Yes) {
+					Options.SelectedPreset = newPreset;
+					UpdateSettings();
+					DialogResult = DialogResult.OK;
+					this.Close();
 				}
 			}
 		}
 
-		private void ComparePresetsButton_Click(object sender, EventArgs e)
+		private void ComparePresetsButton_Click(object? sender, EventArgs e)
 		{
 			if (Options.Presets.Count < 2)
 			{
@@ -594,65 +589,59 @@ namespace Foreman
 				return;
 			}
 
-			using (PresetComparatorForm form = new PresetComparatorForm())
-			{
-				form.StartPosition = FormStartPosition.Manual;
-				form.Left = this.Left + 50;
-				form.Top = this.Top + 50;
-				form.ShowDialog();
-			}
+			using PresetComparatorForm form = new();
+			form.StartPosition = FormStartPosition.Manual;
+			form.Left = this.Left + 50;
+			form.Top = this.Top + 50;
+			form.ShowDialog();
 		}
 
 		//SET ENABLED STATUS------------------------------------------------------------------------------------------
 
-		private void LoadEnabledFromSaveButton_Click(object sender, EventArgs e)
+		private void LoadEnabledFromSaveButton_Click(object? sender, EventArgs e)
 		{
-			using (SaveFileLoadForm form = new SaveFileLoadForm(Options.DCache, Options.EnabledObjects))
-			{
-				form.StartPosition = FormStartPosition.Manual;
-				form.Left = this.Left + 50;
-				form.Top = this.Top + 50;
-				DialogResult result = form.ShowDialog();
+			using SaveFileLoadForm form = new(Options.DCache, Options.EnabledObjects);
+			form.StartPosition = FormStartPosition.Manual;
+			form.Left = this.Left + 50;
+			form.Top = this.Top + 50;
+			DialogResult result = form.ShowDialog();
 
-				if(result == DialogResult.OK)
-					UpdateEnabledStatus();
-				else if (result == DialogResult.Abort)
-					MessageBox.Show("Error while reading save file. Try running factorio, opening the save game, saving again, and retrying?");
-			}
+			if (result == DialogResult.OK)
+				UpdateEnabledStatus();
+			else if (result == DialogResult.Abort)
+				MessageBox.Show("Error while reading save file. Try running factorio, opening the save game, saving again, and retrying?");
 		}
 
-		private void SetEnabledFromSciencePacksButton_Click(object sender, EventArgs e)
+		private void SetEnabledFromSciencePacksButton_Click(object? sender, EventArgs e)
 		{
-			using (SciencePacksLoadForm form = new SciencePacksLoadForm(Options.DCache, Options.EnabledObjects))
-			{
-				form.StartPosition = FormStartPosition.Manual;
-				form.Left = this.Left + 50;
-				form.Top = this.Top + 50;
-				DialogResult result = form.ShowDialog();
+			using SciencePacksLoadForm form = new(Options.DCache, Options.EnabledObjects);
+			form.StartPosition = FormStartPosition.Manual;
+			form.Left = this.Left + 50;
+			form.Top = this.Top + 50;
+			DialogResult result = form.ShowDialog();
 
-				if (result == DialogResult.OK)
-					UpdateEnabledStatus();
-			}
+			if (result == DialogResult.OK)
+				UpdateEnabledStatus();
 		}
 
-		private void EnableAllButton_Click(object sender, EventArgs e)
+		private void EnableAllButton_Click(object? sender, EventArgs e)
 		{
 			Options.EnabledObjects.Clear();
 			Options.EnabledObjects.Add(Options.DCache.PlayerAssembler);
 
-			foreach (Assembler assembler in Options.DCache.Assemblers.Values.Where(m => m.AssociatedItems.Any(i => i.Available)))
+			foreach (IAssembler assembler in Options.DCache.Assemblers.Values.Where(m => m.AssociatedItems.Any(i => i.Available)))
 				Options.EnabledObjects.Add(assembler);
 
-			foreach (Beacon beacon in Options.DCache.Beacons.Values.Where(m => m.AssociatedItems.Any(i => i.Available)))
+			foreach (IBeacon beacon in Options.DCache.Beacons.Values.Where(m => m.AssociatedItems.Any(i => i.Available)))
 				Options.EnabledObjects.Add(beacon);
 
-			foreach (Module module in Options.DCache.Modules.Values.Where(m => m.AssociatedItem.Available))
+			foreach (IModule module in Options.DCache.Modules.Values.Where(m => m.AssociatedItem.Available))
 				Options.EnabledObjects.Add(module);
 
-			foreach (Recipe recipe in Options.DCache.Recipes.Values.Where(r => r.Available))
+			foreach (IRecipe recipe in Options.DCache.Recipes.Values.Where(r => r.Available))
 				Options.EnabledObjects.Add(recipe);
 
-            foreach (Quality quality in Options.DCache.Qualities.Values.Where(r => r.Available))
+            foreach (IQuality quality in Options.DCache.Qualities.Values.Where(r => r.Available))
                 Options.EnabledObjects.Add(quality);
 
             UpdateEnabledStatus();
@@ -690,21 +679,20 @@ namespace Foreman
 			filteredQualityList.AddRange(unfilteredQualityList);
 			QualityListView.VirtualListSize += filteredQualityList.Count;
 
-
 			foreach (ListViewItem item in unfilteredAssemblerList)
-				item.Checked = Options.EnabledObjects.Contains((DataObjectBase)item.Tag);
+				item.Checked = Options.EnabledObjects.Contains(item.Tag as IDataObjectBase ?? throw new InvalidOperationException("item.Tag is not IDataObjectBase"));
 			foreach (ListViewItem item in unfilteredBeaconList)
-				item.Checked = Options.EnabledObjects.Contains((DataObjectBase)item.Tag);
+				item.Checked = Options.EnabledObjects.Contains(item.Tag as IDataObjectBase ?? throw new InvalidOperationException("item.Tag is not IDataObjectBase"));
 			foreach (ListViewItem item in unfilteredMinerList)
-				item.Checked = Options.EnabledObjects.Contains((DataObjectBase)item.Tag);
+				item.Checked = Options.EnabledObjects.Contains(item.Tag as IDataObjectBase ?? throw new InvalidOperationException("item.Tag is not IDataObjectBase"));
 			foreach (ListViewItem item in unfilteredModuleList)
-				item.Checked = Options.EnabledObjects.Contains((DataObjectBase)item.Tag);
+				item.Checked = Options.EnabledObjects.Contains(item.Tag as IDataObjectBase ?? throw new InvalidOperationException("item.Tag is not IDataObjectBase"));
 			foreach (ListViewItem item in unfilteredPowerList)
-				item.Checked = Options.EnabledObjects.Contains((DataObjectBase)item.Tag);
+				item.Checked = Options.EnabledObjects.Contains(item.Tag as IDataObjectBase ?? throw new InvalidOperationException("item.Tag is not IDataObjectBase"));
 			foreach (ListViewItem item in unfilteredRecipeList)
-				item.Checked = Options.EnabledObjects.Contains((DataObjectBase)item.Tag);
+				item.Checked = Options.EnabledObjects.Contains(item.Tag as IDataObjectBase ?? throw new InvalidOperationException("item.Tag is not IDataObjectBase"));
             foreach (ListViewItem item in unfilteredQualityList)
-                item.Checked = Options.EnabledObjects.Contains((DataObjectBase)item.Tag);
+                item.Checked = Options.EnabledObjects.Contains(item.Tag as IDataObjectBase ?? throw new InvalidOperationException("item.Tag is not IDataObjectBase"));
 
 
             UpdateFilteredLists();

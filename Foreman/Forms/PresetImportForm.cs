@@ -1,24 +1,23 @@
-﻿using System;
+﻿using Foreman.DataCache;
+
+using System;
 using System.Linq;
 using System.Windows.Forms;
 using System.IO;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections.Specialized;
 using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 using System.ComponentModel;
 
-namespace Foreman
-{
+namespace Foreman {
 	public partial class PresetImportForm : Form
 	{
-		private char[] ExtraChars = { '(', ')', '-', '_', '.', ' ' };
-		private CancellationTokenSource cts;
+		private readonly char[] ExtraChars = ['(', ')', '-', '_', '.', ' '];
+		private readonly CancellationTokenSource cts;
 
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public string NewPresetName { get; private set; }
@@ -33,7 +32,7 @@ namespace Foreman
 			InitializeComponent();
 			PresetNameTextBox.Focus();
 
-			FactorioLocationComboBox.Items.AddRange(FactorioPathsProcessor.GetFactorioInstallLocations().ToArray());
+			FactorioLocationComboBox.Items.AddRange([.. FactorioPathsProcessor.GetFactorioInstallLocations()]);
 			if (FactorioLocationComboBox.Items.Count > 0)
 				FactorioLocationComboBox.SelectedIndex = 0;
 		}
@@ -55,45 +54,39 @@ namespace Foreman
 			this.ResumeLayout();
 		}
 
-		private void FactorioBrowseButton_Click(object sender, EventArgs e)
+		private void FactorioBrowseButton_Click(object? sender, EventArgs e)
 		{
-			using (FolderBrowserDialog dialog = new FolderBrowserDialog())
-			{
-				if (Directory.Exists(FactorioLocationComboBox.Text))
-					dialog.SelectedPath = FactorioLocationComboBox.Text;
+			using FolderBrowserDialog dialog = new();
+			if (Directory.Exists(FactorioLocationComboBox.Text))
+				dialog.SelectedPath = FactorioLocationComboBox.Text;
 
-				if (dialog.ShowDialog() == DialogResult.OK)
-				{
-					if (File.Exists(Path.Combine(new string[] { dialog.SelectedPath, "bin", "x64", "factorio.exe" })))
-						FactorioLocationComboBox.Text = dialog.SelectedPath;
-					else if(File.Exists(Path.Combine(new string[] {dialog.SelectedPath, "x64", "factorio.exe"})))
-						FactorioLocationComboBox.Text = Path.GetDirectoryName(dialog.SelectedPath);
-					else if (File.Exists(Path.Combine(dialog.SelectedPath, "factorio.exe")))
-						FactorioLocationComboBox.Text = Path.GetDirectoryName(Path.GetDirectoryName(dialog.SelectedPath));
-					else
-						MessageBox.Show("Selected directory doesnt seem to be a factorio install folder (it should at the very least have \"bin\" and \"data\" folders, along with a \"config-path.cfg\" file)");
-				}
+			if (dialog.ShowDialog() == DialogResult.OK) {
+				if (File.Exists(Path.Combine([dialog.SelectedPath, "bin", "x64", "factorio.exe"])))
+					FactorioLocationComboBox.Text = dialog.SelectedPath;
+				else if (File.Exists(Path.Combine([dialog.SelectedPath, "x64", "factorio.exe"])))
+					FactorioLocationComboBox.Text = Path.GetDirectoryName(dialog.SelectedPath);
+				else if (File.Exists(Path.Combine(dialog.SelectedPath, "factorio.exe")))
+					FactorioLocationComboBox.Text = Path.GetDirectoryName(Path.GetDirectoryName(dialog.SelectedPath));
+				else
+					MessageBox.Show("Selected directory doesnt seem to be a factorio install folder (it should at the very least have \"bin\" and \"data\" folders, along with a \"config-path.cfg\" file)");
 			}
 		}
 
-		private void ModsBrowseButton_Click(object sender, EventArgs e)
+		private void ModsBrowseButton_Click(object? sender, EventArgs e)
 		{
-						using (FolderBrowserDialog dialog = new FolderBrowserDialog())
-			{
-				if (Directory.Exists(ModsLocationComboBox.Text))
-					dialog.SelectedPath = ModsLocationComboBox.Text;
+			using FolderBrowserDialog dialog = new();
+			if (Directory.Exists(ModsLocationComboBox.Text))
+				dialog.SelectedPath = ModsLocationComboBox.Text;
 
-				if (dialog.ShowDialog() == DialogResult.OK)
-				{
-					if (File.Exists(Path.Combine(dialog.SelectedPath, "mod-list.json")))
-						ModsLocationComboBox.Text = dialog.SelectedPath;
-					else
-						MessageBox.Show("Selected directory doesnt seem to be a factorio mods folder (it should at the very least have \"mod-list.json\" file)");
-				}
+			if (dialog.ShowDialog() == DialogResult.OK) {
+				if (File.Exists(Path.Combine(dialog.SelectedPath, "mod-list.json")))
+					ModsLocationComboBox.Text = dialog.SelectedPath;
+				else
+					MessageBox.Show("Selected directory doesnt seem to be a factorio mods folder (it should at the very least have \"mod-list.json\" file)");
 			}
 		}
 
-		private void CancelButton_Click(object sender, EventArgs e)
+		private void CancelButton_Click(object? sender, EventArgs e)
 		{
 			cts.Cancel();
 			DialogResult = DialogResult.Cancel;
@@ -101,7 +94,7 @@ namespace Foreman
 			Close();
 		}
 
-		private async void OKButton_Click(object sender, EventArgs e)
+		private async void OKButton_Click(object? sender, EventArgs e)
 		{
 			NewPresetName = PresetNameTextBox.Text;
 			if (!Directory.Exists(FactorioLocationComboBox.Text))
@@ -118,13 +111,13 @@ namespace Foreman
 			}
 
 			List<Preset> existingPresets = MainForm.GetValidPresetsList();
-			if(NewPresetName.ToLower() == MainForm.DefaultPreset.ToLower())
+			if(NewPresetName.Equals(MainForm.DefaultPreset, StringComparison.CurrentCultureIgnoreCase))
 			{
 				MessageBox.Show("Cant overwrite default preset!", "", MessageBoxButtons.OK);
 				CleanupFailedImport();
 				return;
 			}
-			else if (existingPresets.Any(p => p.Name.ToLower() == NewPresetName.ToLower()))
+			else if (existingPresets.Any(p => p.Name.Equals(NewPresetName, StringComparison.CurrentCultureIgnoreCase)))
 			{
 				if (MessageBox.Show("This preset name is already in use. Do you wish to overwrite?", "Confirm Overwrite", MessageBoxButtons.YesNo) != DialogResult.Yes)
 				{
@@ -137,11 +130,11 @@ namespace Foreman
 
 			string installPath = FactorioLocationComboBox.Text;
 			//quick check to ensure the install path is correct (and accept a direct path to the factorio.exe folder just in case)
-			if (!File.Exists(Path.Combine(new string[] { installPath, "bin", "x64", "factorio.exe" })))
-				if (File.Exists(Path.Combine(installPath, "factorio.exe")))
-					installPath = Path.Combine(Path.GetDirectoryName(installPath), @"..\\..\\");
+			if (!File.Exists(Path.Combine([installPath, "bin", "x64", "factorio.exe"])))
+				if (File.Exists(Path.Combine(installPath, "factorio.exe")) && Path.GetDirectoryName(installPath) is string installDir)
+					installPath = Path.Combine(installDir, @"..\\..\\");
 
-			if (!File.Exists(Path.Combine(new string[] { installPath, "bin", "x64", "factorio.exe" })))
+			if (!File.Exists(Path.Combine([installPath, "bin", "x64", "factorio.exe"])))
 			{
 				EnableProgressBar(false);
 				MessageBox.Show("Couldnt find factorio.exe (/bin/x64/factorio.exe) - please select a valid Factorio install location");
@@ -149,12 +142,12 @@ namespace Foreman
 				return;
 			}
 
-			FileVersionInfo factorioVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine(new string[] { installPath, "bin", "x64", "factorio.exe" }));
+			FileVersionInfo factorioVersionInfo = FileVersionInfo.GetVersionInfo(Path.Combine([installPath, "bin", "x64", "factorio.exe"]));
 			if(factorioVersionInfo.ProductMajorPart < 2)
 			{
                 EnableProgressBar(false);
                 MessageBox.Show("Factorio Version below 2.0 can not be used with this version of Foreman. Please use Factorio 2.0 or newer. Alternatively download dev.13 or under of foreman 2.0 for pre factorio 2.0.");
-                ErrorLogging.LogLine(string.Format("Factorio version 0.x or 1.x instead of 2.x - use Foreman dev.13 or below for these factorio installs.", factorioVersionInfo.ProductVersion));
+                ErrorLogging.LogLine(string.Format("Factorio version {0} instead of 2.x - use Foreman dev.13 or below for these factorio installs.", factorioVersionInfo.ProductVersion));
                 CleanupFailedImport();
                 return;
             } else
@@ -162,7 +155,7 @@ namespace Foreman
 			{
                 EnableProgressBar(false);
                 MessageBox.Show("Factorio Version 3.x+ can not be used with this version of Foreman. Sit tight and wait for update...\nYou can also try to msg me on discord (u\\DanielKotes) if for some reason I am not already aware of this.");
-                ErrorLogging.LogLine(string.Format("Factorio version 3.x+ isnt supported.", factorioVersionInfo.ProductVersion));
+                ErrorLogging.LogLine(string.Format("Factorio version {0} isnt supported.", factorioVersionInfo.ProductVersion));
                 CleanupFailedImport();
                 return;
             }
@@ -199,7 +192,7 @@ namespace Foreman
 			var token = cts.Token;
 
 #if DEBUG
-			Stopwatch stopwatch = new Stopwatch();
+			Stopwatch stopwatch = new();
 			stopwatch.Start();
 #endif
 			ImportStarted = true;
@@ -228,8 +221,8 @@ namespace Foreman
 			return await Task.Run(() =>
 			{
 				//prepare for running factorio
-				string exePath = Path.Combine(new string[] { installPath, "bin", "x64", "factorio.exe" });
-				string presetPath = Path.Combine(new string[] { Application.StartupPath, "Presets", NewPresetName });
+				string exePath = Path.Combine([installPath, "bin", "x64", "factorio.exe"]);
+				string presetPath = Path.Combine([Application.StartupPath, "Presets", NewPresetName]);
 				if (!File.Exists(exePath))
 				{
 					MessageBox.Show("factorio.exe not found..."); //considering that we got here with factorio.exe checks, this is a bit redundant. but whatevs.
@@ -261,7 +254,7 @@ namespace Foreman
 				}
 
 				//launch factorio to create the temporary save we will use for export (LAUNCH #1)
-				Process process = new Process();
+				Process process = new();
 				process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 				process.StartInfo.FileName = exePath;
 
@@ -285,7 +278,7 @@ namespace Foreman
 					Thread.Sleep(100);
 				}
 
-				if (resultString.IndexOf("Is another instance already running?") != -1)
+				if (resultString.Contains("Is another instance already running?", StringComparison.CurrentCulture))
 				{
 					MessageBox.Show("Foreman export could not be completed because this instance of Factorio is currently running. Please stop expanding the factory for just a brief moment and let the export commence in peace!");
 					CleanupFailedImport(modsPath);
@@ -300,10 +293,10 @@ namespace Foreman
 				{
 					Directory.CreateDirectory(Path.Combine(modsPath, foremanModName));
 
-					File.Copy(Path.Combine(new string[] { "Mods", foremanModName, "info.json" }), Path.Combine(new string[] { modsPath, foremanModName, "info.json" }));
-					File.Copy(Path.Combine(new string[] { "Mods", foremanModName, "instrument-after-data.lua" }), Path.Combine(new string[] { modsPath, foremanModName, "instrument-after-data.lua" }), true);
+					File.Copy(Path.Combine(["Mods", foremanModName, "info.json"]), Path.Combine([modsPath, foremanModName, "info.json"]));
+					File.Copy(Path.Combine(["Mods", foremanModName, "instrument-after-data.lua"]), Path.Combine([modsPath, foremanModName, "instrument-after-data.lua"]), true);
 
-                    File.Copy(Path.Combine(new string[] { "Mods", foremanModName, "instrument-control.lua" }), Path.Combine(new string[] { modsPath, foremanModName, "instrument-control.lua" }), true);
+                    File.Copy(Path.Combine(["Mods", foremanModName, "instrument-control.lua"]), Path.Combine([modsPath, foremanModName, "instrument-control.lua"]), true);
 				}
 				catch (Exception e)
 				{
@@ -345,13 +338,13 @@ namespace Foreman
 
 				progress.Report(new KeyValuePair<int, string>(25, "Processing mod files."));
 
-				if (resultString.IndexOf("Is another instance already running?") != -1)
+				if (resultString.Contains("Is another instance already running?", StringComparison.CurrentCulture))
 				{
 					MessageBox.Show("Foreman export could not be completed because this instance of Factorio is currently running. Please stop expanding the factory for just a brief moment and let the export commence in peace!");
 					CleanupFailedImport(modsPath);
 					return "";
 				}
-				else if (resultString.IndexOf("<<<END-EXPORT-P1>>>") == -1 || resultString.IndexOf("<<<END-EXPORT-P2>>>") == -1)
+				else if (!resultString.Contains("<<<END-EXPORT-P1>>>", StringComparison.CurrentCulture) || !resultString.Contains("<<<END-EXPORT-P2>>>", StringComparison.CurrentCulture))
 				{
 #if DEBUG
 					Console.WriteLine(resultString);
@@ -366,18 +359,18 @@ namespace Foreman
 				File.WriteAllText(Path.Combine(Application.StartupPath, "debugExporting.json"), resultString);
 #endif
 
-				string lnamesString = resultString.Substring(resultString.IndexOf("<<<START-EXPORT-LN>>>") + 23);
-				lnamesString = lnamesString.Substring(0, lnamesString.IndexOf("<<<END-EXPORT-LN>>>") - 2);
+				string lnamesString = resultString[(resultString.IndexOf("<<<START-EXPORT-LN>>>") + 23)..];
+				lnamesString = lnamesString[..(lnamesString.IndexOf("<<<END-EXPORT-LN>>>") - 2)];
 				lnamesString = lnamesString.Replace("\n", "").Replace("\r", "").Replace("<#~#>", "\n");
 
-				string iconString = resultString.Substring(resultString.IndexOf("<<<START-EXPORT-P1>>>") + 23);
-				iconString = iconString.Substring(0, iconString.IndexOf("<<<END-EXPORT-P1>>>") - 2);
+				string iconString = resultString[(resultString.IndexOf("<<<START-EXPORT-P1>>>") + 23)..];
+				iconString = iconString[..(iconString.IndexOf("<<<END-EXPORT-P1>>>") - 2)];
 
-				string dataString = resultString.Substring(resultString.IndexOf("<<<START-EXPORT-P2>>>") + 23);
-				dataString = dataString.Substring(0, dataString.IndexOf("<<<END-EXPORT-P2>>>") - 2);
+				string dataString = resultString[(resultString.IndexOf("<<<START-EXPORT-P2>>>") + 23)..];
+				dataString = dataString[..(dataString.IndexOf("<<<END-EXPORT-P2>>>") - 2)];
 
 				string[] lnames = lnamesString.Split('\n'); //keep empties - we know where they are!
-				Dictionary<string, string> localisedNames = new Dictionary<string, string>(); //this is the link between the 'lid' property and the localised names in dataString
+				Dictionary<string, string> localisedNames = []; //this is the link between the 'lid' property and the localised names in dataString
 				for (int i = 0; i < lnames.Length / 2; i++)
 					localisedNames.Add('$' + i.ToString(), lnames[(i * 2) + 1].Replace("Unknown key: \"", "").Replace("\"", ""));
 
@@ -385,8 +378,8 @@ namespace Foreman
 				File.WriteAllText(Path.Combine(Application.StartupPath, "_iconJObjectOut.json"), iconString.ToString());
 				File.WriteAllText(Path.Combine(Application.StartupPath, "_dataJObjectOut.json"), dataString.ToString());
 #endif
-				JObject iconJObject = null;
-				JObject dataJObject = null;
+				JObject? iconJObject = null;
+				JObject? dataJObject = null;
 				try
 				{
 					iconJObject = JObject.Parse(iconString); //this is what needs to be parsed to get all the icons
@@ -407,9 +400,9 @@ namespace Foreman
 				{
 					foreach (JToken obj in set.ToList())
 					{
-						if (obj is JObject jobject && (string)jobject["lid"] != null)
+						if (obj is JObject jobject && jobject["lid"]?.Value<string>() is string lid)
 						{
-							JProperty lname = new JProperty("localised_name", localisedNames[(string)jobject["lid"]]);
+							JProperty lname = new("localised_name", localisedNames[lid]);
 							jobject.Add(lname);
 							jobject.Remove("lid");
 						}
@@ -432,11 +425,11 @@ namespace Foreman
 				}
 
 				//now we need to process icons. This is done by the IconProcessor.
-				Dictionary<string, string> modSet = new Dictionary<string, string>();
-				foreach (var objJToken in dataJObject["mods"].ToList())
-					modSet.Add(((string)objJToken["name"]).ToLower(), (string)objJToken["version"]);
+				Dictionary<string, string> modSet = [];
+				foreach (var objJToken in dataJObject["mods"]?.ToList() ?? [])
+					modSet.Add((objJToken["name"]?.Value<string>() ?? throw new InvalidOperationException("Missing JSON key")).ToLower(), objJToken["version"]?.Value<string>() ?? throw new InvalidOperationException("Missing JSON key"));
 
-				using (IconCacheProcessor icProcessor = new IconCacheProcessor())
+				using (IconCacheProcessor icProcessor = new())
 				{
 					if (!icProcessor.PrepareModPaths(modSet, modsPath, Path.Combine(installPath, "data"), token))
 					{
@@ -449,7 +442,7 @@ namespace Foreman
 						return "";
 					}
 
-					if (!icProcessor.CreateIconCache(iconJObject, Path.Combine(Application.StartupPath, presetPath + ".dat"), progress, token, 30, 100))
+					if (!icProcessor.CreateIconCache(iconJObject, Path.Combine(Application.StartupPath, presetPath + ".dat"), progress, 30, 100, token))
 					{
 						if (!token.IsCancellationRequested)
 						{
@@ -495,28 +488,28 @@ namespace Foreman
 
 		//Sets the enabled status of the foreman export mod within the mod-list of factorio to be "enabled" (true/false).
 		//Needs to be enabled in order to process the preset, but should be disabled otherwise as it adds processing steps to factorio which shouldnt be done any other time (such as while playing the game)
-		private void SetStateForemanExportMod(string modsPath, bool enabled)
+		private static void SetStateForemanExportMod(string modsPath, bool enabled)
 		{
 			//ensure that the foreman export mod is correctly added to the mod-list and is enabled
 			string modListPath = Path.Combine(modsPath, "mod-list.json");
-			JObject modlist = null;
+			JObject? modlist = null;
 			if (!File.Exists(modListPath))
-				modlist = new JObject();
+				modlist = [];
 			else
 				modlist = JObject.Parse(File.ReadAllText(modListPath));
 			if (modlist["mods"] == null)
 				modlist.Add("mods", new JArray());
 
-			JToken foremanModToken = modlist["mods"].ToList().FirstOrDefault(t => t["name"] != null && (string)t["name"] == "foremanexport");
+			JToken? foremanModToken = modlist["mods"]?.ToList().FirstOrDefault(t => t["name"]?.Value<string>() is string str && str == "foremanexport");
 			if (enabled)
 			{
 				if (foremanModToken == null)
-					((JArray)modlist["mods"]).Add(new JObject() { { "name", "foremanexport" }, { "enabled", enabled } });
+					(modlist["mods"]?.Value<JArray>() ?? throw new InvalidOperationException("modlist[mods] is not JArray")).Add(new JObject() { { "name", "foremanexport" }, { "enabled", enabled } });
 				else
 					foremanModToken["enabled"] = enabled;
 			}
-			else if(foremanModToken != null)
-				foremanModToken.Remove();
+			else
+				foremanModToken?.Remove();
 
 			try
 			{
@@ -525,7 +518,7 @@ namespace Foreman
 			catch { }
 		}
 
-		private void PresetNameTextBox_TextChanged(object sender, EventArgs e)
+		private void PresetNameTextBox_TextChanged(object? sender, EventArgs e)
 		{
 			int i = PresetNameTextBox.SelectionStart;
 			string filteredText = string.Concat(PresetNameTextBox.Text.Where(c => char.IsLetterOrDigit(c) || ExtraChars.Contains(c)));
@@ -539,7 +532,7 @@ namespace Foreman
 			List<Preset> existingPresets = MainForm.GetValidPresetsList();
 			if (filteredText.Length < 5)
 				PresetNameTextBox.BackColor = Color.Moccasin;
-			else if (existingPresets.Any(p => p.Name.ToLower() == filteredText.ToLower()))
+			else if (existingPresets.Any(p => p.Name.Equals(filteredText, StringComparison.CurrentCultureIgnoreCase)))
 				PresetNameTextBox.BackColor = Color.Pink;
 			else
 				PresetNameTextBox.BackColor = Color.LightGreen;

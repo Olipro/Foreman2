@@ -1,101 +1,90 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Drawing;
-using Newtonsoft.Json.Linq;
-using System.Diagnostics;
+﻿using Newtonsoft.Json;
 
-namespace Foreman
-{
-	public interface PlantProcess : DataObjectBase
-	{
+using System;
+using System.Collections.Generic;
+
+namespace Foreman.DataCache.DataTypes {
+	public interface IPlantProcess : IDataObjectBase {
 
 		double GrowTime { get; } //seconds
 		long PlantID { get; }
+		[JsonProperty("isMissing")]
 		bool IsMissing { get; }
 
-		IReadOnlyDictionary<Item, double> ProductSet { get; }
-		IReadOnlyList<Item> ProductList { get; }
+		IReadOnlyDictionary<IItem, double> ProductSet { get; }
+		IReadOnlyList<IItem> ProductList { get; }
 
-		Item Seed { get; }
+		IItem? Seed { get; }
+
+		public virtual int GetHashCode() {
+			return HashCode.Combine(PlantID, GrowTime, ProductSet, ProductList, Seed);
+		}
 	}
 
-	public class PlantProcessPrototype : DataObjectBasePrototype, PlantProcess
-	{
+	public class PlantProcessPrototype : DataObjectBasePrototype, IPlantProcess {
 		public double GrowTime { get; internal set; }
 
-		public IReadOnlyDictionary<Item, double> ProductSet { get { return productSet; } }
-		public IReadOnlyList<Item> ProductList { get { return productList; } }
+		public IReadOnlyDictionary<IItem, double> ProductSet => ProductSetInternal;
+		public IReadOnlyList<IItem> ProductList => ProductListInternal;
 
-		public Item Seed { get; internal set; }
+		public IItem? Seed { get; internal set; }
 
-        internal Dictionary<Item, double> productSet { get; private set; }
-		internal List<ItemPrototype> productList { get; private set; }
+		internal Dictionary<IItem, double> ProductSetInternal { get; private set; }
+		internal List<ItemPrototype> ProductListInternal { get; private set; }
 
-		internal HashSet<TechnologyPrototype> myUnlockTechnologies { get; private set; }
+		internal HashSet<TechnologyPrototype>? MyUnlockTechnologies { get; private set; }
 
+		[JsonProperty("isMissing")]
 		public bool IsMissing { get; private set; }
 
 		private static long lastPlantID = 0;
 		public long PlantID { get; private set; }
 
-        public PlantProcessPrototype(DataCache dCache, string name, bool isMissing = false) : base(dCache, name, name, "-")
-		{
+		public PlantProcessPrototype(DCache dCache, string name, bool isMissing = false) : base(dCache, name, name, "-") {
 			PlantID = lastPlantID++;
 
 			GrowTime = 0.5f;
-			this.Enabled = true;
-			this.IsMissing = isMissing;
+			Enabled = true;
+			IsMissing = isMissing;
 
-			productSet = new Dictionary<Item, double>();
-			productList = new List<ItemPrototype>();
+			ProductSetInternal = [];
+			ProductListInternal = [];
 		}
 
-		public void InternalOneWayAddProduct(ItemPrototype item, double quantity)
-		{
-			if (productSet.ContainsKey(item))
-			{
-				productSet[item] += quantity;
-			}
-			else
-			{
-				productSet.Add(item, quantity);
-				productList.Add(item);
+		public void InternalOneWayAddProduct(ItemPrototype item, double quantity) {
+			if (ProductSetInternal.ContainsKey(item)) {
+				ProductSetInternal[item] += quantity;
+			} else {
+				ProductSetInternal.Add(item, quantity);
+				ProductListInternal.Add(item);
 			}
 		}
 
 		internal void InternalOneWayDeleteProduct(ItemPrototype item) //only from delete calls
 		{
-			productSet.Remove(item);
-			productList.Remove(item);
+			ProductSetInternal.Remove(item);
+			ProductListInternal.Remove(item);
 		}
 
-		public override string ToString() { return String.Format("Planting process: {0} Id:{1}", Name, PlantID); }
+		public override string ToString() { return string.Format("Planting process: {0} Id:{1}", Name, PlantID); }
 	}
 
-	public class PlantNaInPrComparer : IEqualityComparer<PlantProcess> //compares by name, ingredient names, and product names (but not exact values!)
+	public class PlantNaInPrComparer : IEqualityComparer<IPlantProcess> //compares by name, ingredient names, and product names (but not exact values!)
 	{
-		public bool Equals(PlantProcess x, PlantProcess y)
-		{
+		public bool Equals(IPlantProcess? x, IPlantProcess? y) {
 			if (x == y)
 				return true;
-
-			if (x.Name != y.Name)
-				return false;
-			if (x.ProductList.Count != y.ProductList.Count)
+			if (x is null || y is null || x.Name != y.Name || x.ProductList.Count != y.ProductList.Count || x.Seed != y.Seed)
 				return false;
 
-			if (x.Seed != y.Seed)
-				return false;
-			foreach (Item i in x.ProductList)
+			foreach (IItem i in x.ProductList)
 				if (!y.ProductSet.ContainsKey(i))
 					return false;
 
 			return true;
 		}
 
-		public int GetHashCode(PlantProcess obj)
-		{
+		public int GetHashCode(IPlantProcess obj) {
 			return obj.GetHashCode();
 		}
 	}

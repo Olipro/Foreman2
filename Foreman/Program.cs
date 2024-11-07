@@ -1,8 +1,9 @@
-﻿using System;
+﻿using Foreman.DataCache;
+
+using System;
 using System.Windows.Forms;
 
-namespace Foreman
-{
+namespace Foreman {
 	static class Program
 	{
 		/// <summary>

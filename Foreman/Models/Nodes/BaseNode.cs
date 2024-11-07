@@ -1,21 +1,23 @@
-﻿using Newtonsoft.Json;
+﻿using Foreman.Models;
+using Foreman.Models.Nodes;
+
+using Newtonsoft.Json;
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace Foreman
-{
-	public enum RateType { Auto, Manual };
+namespace Foreman {
+	public enum RateType : int { Auto, Manual };
 	public enum NodeState { Clean, MissingLink, Warning, Error }
 	public enum NodeDirection : int { Up, Down }
 
-	[Serializable]
 	[JsonObject(MemberSerialization.OptIn)]
 	public abstract partial class BaseNode
 	{
 		public abstract BaseNodeController Controller { get; }
-		public ReadOnlyBaseNode ReadOnlyNode { get; protected set; }
+		public abstract ReadOnlyBaseNode ReadOnlyNode { get; protected set; }
 		public readonly ProductionGraph MyGraph;
 		[JsonProperty]
 		public readonly int NodeID;
@@ -23,7 +25,7 @@ namespace Foreman
 		public bool IsClean { get; protected set; } //if true then this node hasnt changed (internal values or links) since last solver solution
 
 		public bool KeyNode { get; set; }
-		[JsonProperty("KeyNode")]
+		[JsonProperty(nameof(KeyNode))]
 		public string KeyNodeTitle { get; set; }
 
 		public bool ShouldSerializeKeyNodeTitle() => KeyNode;
@@ -66,8 +68,8 @@ namespace Foreman
 
 		public NodeState State { get; protected set; }
 
-		public event EventHandler<EventArgs> NodeStateChanged; //includes node state, as well as any changes that may influence the input/output links (ex: switching fuel, assembler, etc.)
-		public event EventHandler<EventArgs> NodeValuesChanged; //includes actual amount / actual rate changes (ex: graph solved), as well as minor updates (ex:beacon numbers, etc.)
+		public event EventHandler<EventArgs>? NodeStateChanged; //includes node state, as well as any changes that may influence the input/output links (ex: switching fuel, assembler, etc.)
+		public event EventHandler<EventArgs>? NodeValuesChanged; //includes actual amount / actual rate changes (ex: graph solved), as well as minor updates (ex:beacon numbers, etc.)
 
 		internal BaseNode(ProductionGraph graph, int nodeID)
 		{
@@ -83,8 +85,8 @@ namespace Foreman
 			desiredRatePerSec = 0;
 			Location = new Point(0, 0);
 
-			InputLinks = new List<NodeLink>();
-			OutputLinks = new List<NodeLink>();
+			InputLinks = [];
+			OutputLinks = [];
 		}
 
 		public bool AllLinksValid { get { return (InputLinks.Count(l => !l.IsValid) + OutputLinks.Count(l => !l.IsValid) == 0); } }
@@ -185,8 +187,8 @@ namespace Foreman
 
 		private readonly BaseNode MyNode;
 
-		public event EventHandler<EventArgs> NodeStateChanged;
-		public event EventHandler<EventArgs> NodeValuesChanged;
+		public event EventHandler<EventArgs>? NodeStateChanged;
+		public event EventHandler<EventArgs>? NodeValuesChanged;
 
 		public ReadOnlyBaseNode(BaseNode node)
 		{
@@ -195,21 +197,15 @@ namespace Foreman
 			MyNode.NodeValuesChanged += Node_NodeValuesChanged;
 		}
 
-		private void Node_NodeStateChanged(object sender, EventArgs e) { NodeStateChanged?.Invoke(this, EventArgs.Empty); }
-		private void Node_NodeValuesChanged(object sender, EventArgs e) { NodeValuesChanged?.Invoke(this, EventArgs.Empty); }
+		private void Node_NodeStateChanged(object? sender, EventArgs e) { NodeStateChanged?.Invoke(this, EventArgs.Empty); }
+		private void Node_NodeValuesChanged(object? sender, EventArgs e) { NodeValuesChanged?.Invoke(this, EventArgs.Empty); }
 
 		public override string ToString() { return "RO: " + MyNode.ToString(); }
 	}
 
 
-	public abstract class BaseNodeController
-	{
-		private readonly BaseNode MyNode;
-
-		protected BaseNodeController(BaseNode myNode)
-		{
-			MyNode = myNode;
-		}
+	public abstract class BaseNodeController(BaseNode myNode) {
+		private readonly BaseNode MyNode = myNode;
 
 		public void SetKeyNode(bool keyNode) { MyNode.KeyNode = keyNode; if (keyNode) MyNode.KeyNodeTitle = MyNode.NodeID.ToString(); else MyNode.KeyNodeTitle = ""; }
 		public void SetKeyNodeTitle(string title) { if(MyNode.KeyNode) MyNode.KeyNodeTitle = title; }
@@ -227,7 +223,7 @@ namespace Foreman
 
 		protected Dictionary<string, Action> GetInvalidConnectionResolutions()
 		{
-			Dictionary<string, Action> resolutions = new Dictionary<string, Action>();
+			Dictionary<string, Action> resolutions = [];
 			if (!MyNode.AllLinksValid)
 			{
 				resolutions.Add("Delete invalid links", new Action(() =>
