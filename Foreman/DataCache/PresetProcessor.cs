@@ -137,7 +137,7 @@ namespace Foreman.DataCache {
 				}
 
 				//have to process mining, generators and boilers (since we convert them to recipes as well)
-				foreach (var objJToken in jsonData["resources"]?.ToList() ?? []) {
+				foreach (var objJToken in jsonData["resources"]?.Concat(jsonData["water_resources"]?.ToList() ?? []) ?? []) {
 					if (objJToken["products"] is not JToken products || !products.Any())
 						continue;
 
