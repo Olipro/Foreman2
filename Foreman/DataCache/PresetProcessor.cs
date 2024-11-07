@@ -242,7 +242,7 @@ namespace Foreman
 				}
 
 				//have to process mining, generators and boilers (since we convert them to recipes as well)
-				foreach (var objJToken in jsonData["resources"]) {
+				foreach (var objJToken in jsonData["resources"].Concat(jsonData["water_resources"])) {
 					if (objJToken["products"].Count() == 0)
 						continue;
 
